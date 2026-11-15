@@ -1,0 +1,105 @@
+name: MorniSMP
+version: '${project.version}'
+main: de.moinmorni.smp.SmpPlugin
+api-version: '1.21'
+description: MorniSMP – Überleben mit freiem Markt (Marktstadt, Auktionshaus, Aufträge, Läden, Grundstücke, Zufalls-Teleport).
+authors: [MoinMorni]
+website: https://moinmorni.net
+# Läuft mit dem Netzwerk-Plugin (Sprache, Statistik, Zustand) und auch allein.
+softdepend: [MoinMorni]
+
+commands:
+  mornismp:
+    description: Hilfe zu MorniSMP
+    aliases: [smp, smphilfe]
+  geld:
+    description: Kontostand zeigen (auch von anderen)
+    usage: /geld [spieler]
+    aliases: [money, bal, balance, taler, kontostand]
+  zahlen:
+    description: Taler an jemanden überweisen
+    usage: /zahlen <spieler> <betrag>
+    aliases: [pay, ueberweisen, überweisen]
+  reichste:
+    description: Die reichsten Spieler
+    aliases: [baltop, reichsten]
+  ah:
+    description: Auktionshaus öffnen / Gegenstand in der Hand verkaufen
+    usage: /ah [verkaufen <preis> | suche <text> | meine]
+    aliases: [auktionshaus, auktion, auction]
+  abholen:
+    description: Abholfach öffnen (gekaufte und zurückgegebene Sachen)
+    aliases: [fach, abholfach, mailbox, collect]
+  auftraege:
+    description: Auftragsbrett – Kaufaufträge ansehen, beliefern, selbst aufgeben
+    usage: /auftraege [neu <menge> <preis pro stück> | meine | suche <text>]
+    aliases: [aufträge, auftrag, orders, auftragsbrett]
+  verkaufen:
+    description: Ankauf der Stadt – Ernte und Mob-Beute verkaufen
+    aliases: [ankauf, sell]
+  stand:
+    description: Marktstand mieten, verlängern oder kündigen
+    usage: /stand [mieten | verlaengern | kuendigen]
+    aliases: [marktstand, stall]
+  gs:
+    description: Grundstücke (Chunks) sichern und verwalten
+    usage: /gs [sichern | aufgeben | info | liste | vertrauen <spieler> | misstrauen <spieler> | pvp an|aus | grenzen]
+    aliases: [grundstueck, grundstück, claim]
+  rtp:
+    description: Zufalls-Teleport in die Wildnis
+    usage: /rtp [nah | mittel | weit | nether | end]
+    aliases: [zufall, wild, reisetor]
+  spawn:
+    description: Zur Marktstadt
+    aliases: [stadt, marktstadt]
+  back:
+    description: Zurück zum letzten Ort (oder Ort des Todes)
+    aliases: [zurueck, zurück]
+  home:
+    description: Zu einem Zuhause
+    usage: /home [name]
+    aliases: [zuhause, h]
+  sethome:
+    description: Zuhause setzen
+    usage: /sethome [name]
+    aliases: [zuhausesetzen]
+  delhome:
+    description: Zuhause löschen
+    usage: /delhome <name>
+    aliases: [zuhauseloeschen]
+  homes:
+    description: Alle Zuhause
+  tpa:
+    description: Fragen, ob du dich zu jemandem teleportieren darfst
+    usage: /tpa <spieler>
+  tpahere:
+    description: Jemanden zu dir bitten
+    usage: /tpahere <spieler>
+    aliases: [tpaher]
+  tpaccept:
+    description: Teleport-Anfrage annehmen
+    usage: /tpaccept [spieler]
+    aliases: [tpannehmen, tpyes]
+  tpdeny:
+    description: Teleport-Anfrage ablehnen
+    usage: /tpdeny [spieler]
+    aliases: [tpablehnen, tpno]
+  kopfgeld:
+    description: Kopfgelder ansehen oder aussetzen
+    usage: /kopfgeld [spieler betrag]
+    aliases: [bounty]
+  belohnung:
+    description: Tägliche Belohnung abholen
+    aliases: [daily, reward, taeglich]
+  leiste:
+    description: Leiste rechts an/aus
+    aliases: [sidebar]
+  smpadmin:
+    description: Verwaltung von MorniSMP (Team)
+    usage: /smpadmin [geld | bau | stadt | neuladen | stand | gs | info]
+    permission: morni.smp.admin
+
+permissions:
+  morni.smp.admin:
+    description: MorniSMP verwalten (Geld, Bau-Modus, Stadt, Stände, Grundstücke)
+    default: op
