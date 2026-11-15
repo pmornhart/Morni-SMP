@@ -16,6 +16,7 @@
 #   SMP_NODE_MODULES  node_modules mit mineflayer
 #   EXTRA_PLUGINS weitere Jars (Vorgabe: ViaVersion + ViaBackwards aus dem Cache, wie im Netzwerk)
 #   PORT / RCON_PORT  25740 / 25840
+#   NO_NETWORK=1  ohne Test-Netzwerk (test/fake-network: Sprache, Statistik und Zustand landen in calls.log)
 #
 # Verfasst mit Claude 🤖
 set -euo pipefail
@@ -37,6 +38,9 @@ export NODE_PATH="${SMP_NODE_MODULES:-$CACHE/node/node_modules}${NODE_PATH:+:$NO
 
 echo "== Bauen"
 (cd "$REPO" && mvn -q -B -o -DskipTests package 2>/dev/null || mvn -q -B -DskipTests package)
+if [ "${NO_NETWORK:-0}" != "1" ]; then
+  (cd "$REPO" && mvn -q -B -o -f test/fake-network/pom.xml package 2>/dev/null || mvn -q -B -f test/fake-network/pom.xml package)
+fi
 
 echo "== Server einrichten: $SERVER"
 if [ "${FRESH:-0}" = "1" ]; then
@@ -76,7 +80,14 @@ belohnung:
 zufallsteleport:
   abklingzeit-sekunden: 30
 EOF
-rm -f "$SERVER/plugins/"Morni-SMP*.jar
+rm -f "$SERVER/plugins/"Morni-SMP*.jar "$SERVER/plugins/MoinMorni-FakeNetwork.jar"
+# Test-Netzwerk (NO_NETWORK=1: MorniSMP läuft allein): Cleo spricht Englisch, Meldungen landen in calls.log.
+if [ "${NO_NETWORK:-0}" != "1" ]; then
+  mkdir -p "$SERVER/plugins/MoinMorni"
+  printf 'lang.Cleo=en\n' > "$SERVER/plugins/MoinMorni/fake.properties"
+  rm -f "$SERVER/plugins/MoinMorni/calls.log"
+  cp "$REPO/test/fake-network/target/MoinMorni-FakeNetwork.jar" "$SERVER/plugins/"
+fi
 cp "$REPO/target/Morni-SMP.jar" "$SERVER/plugins/"
 for jar in $EXTRA_PLUGINS; do
   [ -f "$jar" ] && cp "$jar" "$SERVER/plugins/"
@@ -117,7 +128,7 @@ fi
 
 echo "== Test-Spieler"
 STATUS=0
-node "$HERE/smp-test.cjs" 127.0.0.1 "$PORT" "127.0.0.1:$RCON_PORT" "$SERVER/.rcon-pass" "$SERVER" || STATUS=$?
+NO_NETWORK="${NO_NETWORK:-0}" node "$HERE/smp-test.cjs" 127.0.0.1 "$PORT" "127.0.0.1:$RCON_PORT" "$SERVER/.rcon-pass" "$SERVER" || STATUS=$?
 
 echo "== Fehler im Server-Log:"
 if grep -qE "ERROR|Exception" console.log; then

@@ -12,7 +12,10 @@ const fs = require('node:fs');
 const mineflayer = require('mineflayer');
 const { rcon } = require('./rcon.cjs');
 
-const [HOST = '127.0.0.1', PORT = '25740', RCON = '127.0.0.1:25840', PASS_FILE] = process.argv.slice(2);
+const path = require('node:path');
+
+const [HOST = '127.0.0.1', PORT = '25740', RCON = '127.0.0.1:25840', PASS_FILE, SERVER] = process.argv.slice(2);
+const NETWORK = process.env.NO_NETWORK !== '1';
 const PASS = fs.readFileSync(PASS_FILE, 'utf8').trim();
 const VERSION = process.env.MC_VERSION ?? '26.1';
 
@@ -505,6 +508,29 @@ async function main() {
   const adm = await cmd('smpadmin info');
   check('/smpadmin info (Konsole)', /Geld bei Spielern/.test(adm.join(' ')), adm.join(' ').slice(0, 160));
   void afterStall;
+
+  // ------------------------------------------------------------------ Netzwerk (Test-Ersatz schreibt calls.log)
+  if (NETWORK) {
+    const cleo = await join('Cleo');
+    const en = await say(cleo, '/geld', /balance/i);
+    check('Sprache vom Netzwerk: Englisch für Cleo', /Your balance: 100 ₮/.test(en), en);
+    cleo.quit();
+    const final = await balance(anna);
+    const log = path.join(SERVER, 'plugins/MoinMorni/calls.log');
+    const calls = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '').split('\n').filter(Boolean)
+      .map((l) => JSON.parse(l));
+    const sum = (name, key) => calls().filter((c) => c.t === 'stats' && c.mode === 'mirni' && c.name === name)
+      .reduce((n, c) => n + (c.add[key] ?? 0), 0);
+    await waitFor(() => sum('Anna', 'balance') === final * 100, 40000, 1000);
+    check('Netzwerk-Statistik: Kontostand von Anna stimmt (in Hundertsteln)', sum('Anna', 'balance') === final * 100,
+      `${sum('Anna', 'balance')} / ${final * 100}`);
+    check('Netzwerk-Statistik: Verkäufe Anna ≥ 2 (Auktion + Laden)', sum('Anna', 'sales') >= 2, String(sum('Anna', 'sales')));
+    check('Netzwerk-Statistik: Einkäufe Bert ≥ 2, erfüllte Aufträge Anna = 1',
+      sum('Bert', 'purchases') >= 2 && sum('Anna', 'orders_filled') === 1,
+      `${sum('Bert', 'purchases')} / ${sum('Anna', 'orders_filled')}`);
+    check('Netzwerk-Zustand „running“ für mirni', calls().some((c) => c.t === 'state' && c.mode === 'mirni' &&
+      c.state === 'running'));
+  }
 
   anna.quit();
   bert.quit();
