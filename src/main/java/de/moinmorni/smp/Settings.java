@@ -118,7 +118,11 @@ public final class Settings {
         claimTownDistance = clamp(c.getInt("grundstuecke.abstand-zur-stadt", 2), 0, 64);
 
         buyback = new ArrayList<>();
-        ConfigurationSection prices = c.getConfigurationSection("ankauf.preise");
+        // eigene Preisliste nur, wenn sie in der config.yml steht – sonst die mitgelieferte (Werte darin haben eigene
+        // Vorgaben, die sonst von getDouble(…, 0) überdeckt würden)
+        ConfigurationSection prices = c.contains("ankauf.preise", true) || c.getDefaults() == null
+                ? c.getConfigurationSection("ankauf.preise")
+                : c.getDefaults().getConfigurationSection("ankauf.preise");
         if (prices != null) {
             for (String key : prices.getKeys(false)) {
                 ConfigurationSection s = prices.getConfigurationSection(key);

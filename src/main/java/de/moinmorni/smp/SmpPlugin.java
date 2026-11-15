@@ -82,6 +82,8 @@ public final class SmpPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        // fehlende Schlüssel (ältere config.yml) kommen aus der mitgelieferten Datei
+        getConfig().options().copyDefaults(true);
         LongSupplier clock = System::currentTimeMillis;
         s.plugin = this;
         s.settings = Settings.load(getConfig());
@@ -265,6 +267,7 @@ public final class SmpPlugin extends JavaPlugin {
     /** {@code /smpadmin neuladen}: config.yml neu lesen. */
     public void reloadSettings() {
         reloadConfig();
+        getConfig().options().copyDefaults(true);
         s.settings = Settings.load(getConfig());
         s.bank.startBalance(s.settings.startBalance);
         s.ah.configure(s.settings.ahFeeBp, s.settings.ahDurationMs, s.settings.ahMaxListings);
