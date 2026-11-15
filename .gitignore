@@ -1,0 +1,6 @@
+target/
+*.iml
+.idea/
+test/server/
+test/node_modules/
+test/*.log
