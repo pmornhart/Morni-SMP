@@ -117,17 +117,10 @@ class TownPlanTest {
             }
             assertNotNull(plan.get(x, y - 1, z), "Wasser hat Boden");
         }
-        // das Wasser der Brunnen-Quelle fällt in die Schale
-        int falls = 0;
-        for (Map.Entry<Long, String> e : plan.blocks().entrySet()) {
-            if (!e.getValue().equals("water[level=8]")) {
-                continue;
-            }
-            falls++;
-            String below = plan.get(Plan.x(e.getKey()), Plan.y(e.getKey()) - 1, Plan.z(e.getKey()));
-            assertTrue(below != null && below.startsWith("water"), "fallendes Wasser landet im Wasser");
+        // nur stilles Wasser (Quellen), nichts Fließendes, das über Ränder laufen könnte
+        for (String v : plan.blocks().values()) {
+            assertTrue(!v.startsWith("water["), "fließendes Wasser im Plan: " + v);
         }
-        assertTrue(falls >= 4, "Quelle sprudelt nach vier Seiten");
         assertTrue(layout.boardY() > 9, "Bestenliste über der Brunnenspitze");
     }
 

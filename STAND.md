@@ -21,7 +21,7 @@ dort gewesen“.
 - `market/`: `AuctionHouse`, `Orders` (Treuhand), `Buyback` (Stufen pro Tag), `Shops` (Ladenkisten), `Stalls`
   (Wochenmiete), `Mailbox` (Abholfach), `Notices` (Nachrichten für später), `PriceHistory` (Median), `MarketStats`,
   `Category`, `SearchWords` (deutsch/englisch), `Fees`; `market/ui/`: Menüs und `ShopListener`.
-- `town/`: `TownPlan` (Plan der Marktstadt, `VERSION` 4, Marmor-Brunnen mit Schale und kleiner Quelle obenauf, drei Reisetor-Torhäuser mit eigener Optik), `TownBuilder`
+- `town/`: `TownPlan` (Plan der Marktstadt, `VERSION` 5, Marmor-Brunnen mit stillem Wasser in Becken und Schale, Sprudeln als Partikel; Neubau räumt alles über dem Boden, drei Reisetor-Torhäuser mit eigener Optik), `TownBuilder`
   (baut Stück für Stück; in der Spawn-Welt als schwebende Insel mit Fels-Unterseite), `Town` (Laufzeit: Spawn-Welt =
   Stadt, Auslöser, Reisetore), `Boards` (Bestenliste, Standschilder), `Houses`, `Frame`, `Plan`, `Connect`, `Layout`.
 - `claims/`: `Claims` (Chunks im Speicher + DB), `ClaimRules` (reine Regeln). `world/`: `Protection` (Spawn-Welt +
@@ -43,10 +43,10 @@ dort gewesen“.
 - Version 0.1.0 (Branch `claude/erster-stand`, noch nicht veröffentlicht – wartet auf Philips Go).
 - Unit-Tests: 45 grün (Geld atomar auch bei gleichzeitigen Überweisungen, Auktions-Kauf-Wettlauf, Treuhand der
   Aufträge inkl. gleichzeitiger Lieferungen, sinkende Ankaufspreise, Gebühren, Grundstücksregeln, sicherer Ort beim
-  Zufalls-Teleport, Ablauf der Standmiete, Stadtplan inkl. drei offener Reisetore mit freiem Rückweg und Brunnen-Quelle, die in die Schale fällt,
+  Zufalls-Teleport, Ablauf der Standmiete, Stadtplan inkl. drei offener Reisetore mit freiem Rückweg und nur stillem Wasser,
   Netzwerk-Statistik, Einstellungen, Texte).
 - Echter Test (`FRESH=1 test/run.sh`): Paper 26.1.2 + ViaVersion/ViaBackwards + Netzwerk-Ersatz, normale Welt, zwei
-  Test-Spieler (mineflayer): **108/108** – Spawn-Welt (neue Spieler landen dort, Insel schwebt, keine Grundstücke, Marmor-Brunnen),
+  Test-Spieler (mineflayer): **111/111** – Spawn-Welt (neue Spieler landen dort, Insel schwebt, keine Grundstücke, Marmor-Brunnen nur mit stillem Wasser – auch nach Neubau über fließendes Altwasser),
   drei Reisetore (große Ziel-Schrift + „Reisetor“-Zeile je Tor, frei in der Luft über dem Bogen, mit Größe gegen Wegschneiden im Client, Tor-Bild; hineingehen → Oberwelt/Nether/End auf sicherem Boden, Nether zwischen
   y 32 und 110, End nicht in der Leere; `/spawn` zurück), `/rtp nether` und `/rtp end`, echtes Netherportal in der
   Oberwelt → Nether, Stadt (Blöcke, Bestenliste, Standschilder), Begrüßung, Leiste, /geld, /smpadmin geld, /zahlen,

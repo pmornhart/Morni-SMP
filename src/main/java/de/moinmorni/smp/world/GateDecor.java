@@ -151,6 +151,20 @@ public final class GateDecor {
         }
     }
 
+    /** Brunnen: oben sprudelt es, vom Schalenrand tropft und rieselt Wasser ins Becken (nur Partikel). */
+    private static void fountain(World w, int ground) {
+        Location top = new Location(w, 0.5, ground + 8.6, 0.5);
+        w.spawnParticle(Particle.SPLASH, top, 10, 0.25, 0.15, 0.25, 0.08);
+        w.spawnParticle(Particle.FALLING_WATER, top, 4, 0.6, 0.1, 0.6, 0);
+        for (int i = 0; i < 8; i++) {
+            double a = Math.PI / 4 * i;
+            Location edge = new Location(w, 0.5 + Math.cos(a) * 2.7, ground + 6.95, 0.5 + Math.sin(a) * 2.7);
+            w.spawnParticle(Particle.FALLING_WATER, edge, 2, 0.12, 0.02, 0.12, 0);
+            w.spawnParticle(Particle.DRIPPING_WATER, edge, 1, 0.1, 0.0, 0.1, 0);
+        }
+        w.spawnParticle(Particle.SPLASH, new Location(w, 0.5, ground + 2.05, 0.5), 8, 2.6, 0.02, 2.6, 0.05);
+    }
+
     /** Alle halbe Sekunde: Funken in den Toren, wenn jemand in der Nähe ist. */
     public void particles() {
         if (!town.ready()) {
@@ -161,6 +175,7 @@ public final class GateDecor {
             return;
         }
         int ground = town.ground();
+        fountain(w, ground);
         for (Layout.Gate g : town.layout().gates()) {
             Box b = g.membrane();
             Location c = new Location(w, (b.x1() + b.x2() + 1) / 2.0, ground + (b.y1() + b.y2() + 1) / 2.0,

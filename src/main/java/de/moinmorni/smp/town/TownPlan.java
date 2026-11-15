@@ -28,7 +28,7 @@ import java.util.Map;
 public final class TownPlan {
 
     /** Bau-Fassung: wird sie erhöht, baut sich die Stadt beim nächsten Start neu (Stände werden vorher geräumt). */
-    public static final int VERSION = 4;
+    public static final int VERSION = 5;
 
     public static final int AREA = 58;
     public static final int FLAT = 51;
@@ -164,7 +164,8 @@ public final class TownPlan {
     /** Brunnen in der Mitte: rundes Becken, Säule mit goldener Kugel, darüber die Bestenliste. */
     /**
      * Brunnen aus hellem Marmor (Quarz, Kalzit) mit Gold: unten ein ruhiges Becken, in der Mitte eine Säule mit einer
-     * Schale; obenauf sprudelt eine kleine Quelle in die Schale. Laternen auf goldenen Sockeln, Blumentöpfe ringsum.
+     * Schale. Wasser nur als stilles Wasser, ganz von höheren Rändern umschlossen; Sprudeln und Tropfen über den
+     * Schalenrand sind Partikel ({@code GateDecor}). Laternen auf goldenen Sockeln, Blumentöpfe ringsum.
      */
     private void fountain() {
         for (int x = -5; x <= 5; x++) {
@@ -205,14 +206,11 @@ public final class TownPlan {
                 }
             }
         }
-        // Spitze: Säule mit Gold, obenauf eine Quelle, die nach vier Seiten kurz in die Schale sprudelt
+        // Spitze: Säule mit Gold und Laterne; das Sprudeln und Tropfen sind Partikel (kein fließendes Wasser, das
+        // über Ränder laufen könnte)
         plan.set(0, 6, 0, "quartz_pillar[axis=y]");
         plan.set(0, 7, 0, "gold_block");
-        plan.set(0, 8, 0, "water");
-        for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-            plan.set(d[0], 8, d[1], "water[level=1]");
-            plan.set(d[0], 7, d[1], "water[level=8]");
-        }
+        plan.set(0, 8, 0, "lantern[hanging=false]");
         // Laternen auf goldenen Sockeln am Beckenrand (diagonal)
         for (int[] d : new int[][] {{3, 3}, {-3, 3}, {3, -3}, {-3, -3}}) {
             plan.set(d[0], 2, d[1], "gold_block");

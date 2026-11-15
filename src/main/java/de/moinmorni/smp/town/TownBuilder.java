@@ -235,6 +235,13 @@ public final class TownBuilder {
      * etwas Moos, Erzen und Leuchtsteinen; außerhalb des Plateaus bleibt Luft.
      */
     private void island(World w, int x, int z, int ground, int d, int flat) {
+        // alles über dem Boden räumen (alte Fassung, auch fließendes Wasser), bevor der neue Plan kommt
+        for (int y = ground + 1; y <= Math.min(w.getMaxHeight() - 1, ground + 45); y++) {
+            Block b = w.getBlockAt(x, y, z);
+            if (!b.getType().isAir()) {
+                b.setType(Material.AIR, false);
+            }
+        }
         if (d > flat) {
             return;
         }

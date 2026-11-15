@@ -233,6 +233,49 @@ async function main() {
   const fountain = anna.findBlocks({ matching: (b) => b.name === 'quartz_pillar' || b.name === 'gold_block', maxDistance: 16,
     count: 30 }).length;
   check('Marmor-Brunnen mit Gold auf dem Marktplatz', fountain >= 8, `${fountain} Quarzsäulen/Goldblöcke`);
+  // Brunnen: nur stilles Wasser in Becken und Schale, nichts Fließendes (auch nach dem Neubau einer alten Fassung)
+  const GROUND = Math.floor(pos.y) - 1;
+  const fountainWater = () => {
+    let still = 0;
+    const flowing = [];
+    for (let x = -8; x <= 8; x++) {
+      for (let z = -8; z <= 8; z++) {
+        for (let y = GROUND; y <= GROUND + 12; y++) {
+          const b = anna.blockAt(new (pos.constructor)(x, y, z));
+          if (b?.name === 'water') {
+            const level = Number(b.getProperties?.().level ?? 0);
+            const d2 = x * x + z * z;
+            const inside = (y === GROUND + 1 && d2 <= 13) || (y === GROUND + 6 && d2 >= 1 && d2 <= 2);
+            if (level === 0 && inside) still++;
+            else flowing.push(`${x},${y},${z}:${level}`);
+          }
+        }
+      }
+    }
+    return { still, flowing };
+  };
+  await sleep(3000);
+  let fw = fountainWater();
+  check('Brunnen (frische Welt): nur stilles Wasser in Becken und Schale', fw.flowing.length === 0 && fw.still >= 40,
+    `${fw.still} still, fließend: ${fw.flowing.slice(0, 6).join(' ')}`);
+  // alte Fassung nachstellen: Wasser außerhalb der Schalen, das fließt – dann /smpadmin stadt neu
+  const log = path.join(SERVER, 'console.log');
+  const built = () => (fs.readFileSync(log, 'utf8').match(/Marktstadt fertig/g) ?? []).length;
+  const builtBefore = built();
+  await cmd(`execute in minecraft:smp_spawn run setblock 1 ${GROUND + 8} 0 minecraft:water`,
+    `execute in minecraft:smp_spawn run setblock 3 ${GROUND + 5} 0 minecraft:water`);
+  await sleep(4000);
+  fw = fountainWater();
+  check('Nachgestellt: fließendes Wasser einer alten Fassung', fw.flowing.length > 3, String(fw.flowing.length));
+  await cmd('smpadmin stadt neu');
+  await waitFor(() => built() > builtBefore, 120000, 1000);
+  await sleep(6000); // ein paar Sekunden ticken lassen
+  fw = fountainWater();
+  check('Nach dem Neubau: altes Wasser weg, nur stilles Wasser in den Schalen', built() > builtBefore &&
+    fw.flowing.length === 0 && fw.still >= 40, `${fw.still} still, fließend: ${fw.flowing.slice(0, 6).join(' ')}`);
+  await waitFor(async () => /count: 2/i.test((await cmd(
+    'execute in minecraft:smp_spawn if entity @e[type=text_display,tag=morni_smp_gate_end]')).join(' ')), 15000, 1000);
+
   const DIMS = { overworld: 'minecraft:overworld', nether: 'minecraft:the_nether', end: 'minecraft:the_end' };
   for (const target of ['overworld', 'nether', 'end']) {
     const g = gates[target];
