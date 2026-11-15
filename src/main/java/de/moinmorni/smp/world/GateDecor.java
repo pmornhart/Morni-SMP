@@ -84,6 +84,8 @@ public final class GateDecor {
             d.addScoreboardTag(TAG);
             d.addScoreboardTag(TAG + "_" + g.target());
             d.setViewRange(4f);
+            d.setDisplayWidth(2 * Math.max(scale.x, scale.z) + 2f); // Kasten um die Ecke, an der die Anzeige steht
+            d.setDisplayHeight(scale.y + 1f);
             d.setPersistent(false);
             d.setBlock(data);
             d.setBrightness(new Display.Brightness(15, 15));
@@ -99,7 +101,7 @@ public final class GateDecor {
             default -> "<green><b>Oberwelt</b></green> <gray>·</gray> <green><b>Overworld</b></green>";
         };
         double y = town.ground() + g.labelY();
-        text(w, g, new Location(w, g.labelX(), y + 1.0, g.labelZ()), title, 3.2f);
+        text(w, g, new Location(w, g.labelX(), y + 0.75, g.labelZ()), title, 3.0f);
         text(w, g, new Location(w, g.labelX(), y, g.labelZ()), "<gold>Reisetor · Travel gate</gold>", 1.5f);
     }
 
@@ -114,6 +116,10 @@ public final class GateDecor {
             t.setBackgroundColor(Color.fromARGB(110, 15, 20, 30));
             t.setLineWidth(600);
             t.setViewRange(4f); // auch vom Marktplatz aus (≈ 250 Blöcke)
+            // Ohne eigene Größe ist die Anzeige für den Client ein Punkt: liegt der Punkt außerhalb des Blickfelds,
+            // wird die ganze Schrift weggelassen (so fehlte sie beim End-Tor). Größe = Fläche der Schrift.
+            t.setDisplayWidth(14f);
+            t.setDisplayHeight(3f);
             t.setBrightness(new Display.Brightness(15, 15));
             t.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(),
                     new Vector3f(scale, scale, scale), new AxisAngle4f()));

@@ -28,7 +28,7 @@ import java.util.Map;
 public final class TownPlan {
 
     /** Bau-Fassung: wird sie erhöht, baut sich die Stadt beim nächsten Start neu (Stände werden vorher geräumt). */
-    public static final int VERSION = 3;
+    public static final int VERSION = 4;
 
     public static final int AREA = 58;
     public static final int FLAT = 51;
@@ -163,8 +163,8 @@ public final class TownPlan {
 
     /** Brunnen in der Mitte: rundes Becken, Säule mit goldener Kugel, darüber die Bestenliste. */
     /**
-     * Brunnen aus hellem Marmor (Quarz, Kalzit) mit Gold: unten ein großes Becken, in der Mitte eine Säule mit einer
-     * Schale, aus der nach vier Seiten Wasser ins Becken fällt; Laternen auf goldenen Sockeln, Blumentöpfe ringsum.
+     * Brunnen aus hellem Marmor (Quarz, Kalzit) mit Gold: unten ein ruhiges Becken, in der Mitte eine Säule mit einer
+     * Schale; obenauf sprudelt eine kleine Quelle in die Schale. Laternen auf goldenen Sockeln, Blumentöpfe ringsum.
      */
     private void fountain() {
         for (int x = -5; x <= 5; x++) {
@@ -205,19 +205,13 @@ public final class TownPlan {
                 }
             }
         }
-        // Spitze: Säule, Gold, Laterne
+        // Spitze: Säule mit Gold, obenauf eine Quelle, die nach vier Seiten kurz in die Schale sprudelt
         plan.set(0, 6, 0, "quartz_pillar[axis=y]");
-        plan.set(0, 7, 0, "chiseled_quartz_block");
-        plan.set(0, 8, 0, "gold_block");
-        plan.set(0, 9, 0, "lantern[hanging=false]");
-        // vier Wasserfälle: Kerbe im Schalenrand, dann senkrecht ins Becken
+        plan.set(0, 7, 0, "gold_block");
+        plan.set(0, 8, 0, "water");
         for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-            plan.set(2 * d[0], 6, 2 * d[1], "water[level=1]");
-            plan.set(2 * d[0], 7, 2 * d[1], "air");
-            plan.set(3 * d[0], 6, 3 * d[1], "water[level=2]");
-            for (int y = 2; y <= 5; y++) {
-                plan.set(3 * d[0], y, 3 * d[1], "water[level=8]");
-            }
+            plan.set(d[0], 8, d[1], "water[level=1]");
+            plan.set(d[0], 7, d[1], "water[level=8]");
         }
         // Laternen auf goldenen Sockeln am Beckenrand (diagonal)
         for (int[] d : new int[][] {{3, 3}, {-3, 3}, {3, -3}, {-3, -3}}) {
@@ -771,12 +765,8 @@ public final class TownPlan {
         }
         f.fill(2, 0, 0, 6, 0, d - 1, theme.floor());
         plan.banner(f.x(4, -1), 9, f.z(4, -1), theme.banner() + "[facing=" + f.f() + "]", theme.pattern());
-        plan.banner(f.x(4, d), 9, f.z(4, d), theme.banner() + "[facing=" + f.b() + "]", theme.pattern());
-        String c = theme.colour();
-        plan.sign(f.x(4, d), 7, f.z(4, d), "spruce_wall_sign[facing=" + f.b() + "]",
-                List.of("<au>Reisetor</au>", "<" + c + "><b>" + theme.de() + "</b></" + c + ">", "hindurchgehen",
-                        "<mu>Zufalls-Teleport</mu>"),
-                List.of());
+        // Stadtseite: Banner hoch oben, darunter steht die große Schrift (setzt das Plugin)
+        plan.banner(f.x(4, d), 10, f.z(4, d), theme.banner() + "[facing=" + f.b() + "]", theme.pattern());
         f.sign(4, 7, -1, "spruce", List.of("", "<au>Marktstadt</au>", "<mu>MorniSMP</mu>", ""), List.of());
         // Reisetor für das Plugin
         Box box = Box.of(f.x(2, 1), 1, f.z(2, 1), f.x(6, 2), 3, f.z(6, 2));
@@ -785,7 +775,7 @@ public final class TownPlan {
         float yaw = (float) Math.toDegrees(Math.atan2(-in.dx, in.dz));
         String axis = out.dx == 0 ? "x" : "z";
         gates.add(new Layout.Gate(theme.target(), box, f.x(4, d + 2) + 0.5, f.z(4, d + 2) + 0.5, yaw, membrane,
-                axis, f.x(4, d + 2) + 0.5, 9.6, f.z(4, d + 2) + 0.5));
+                axis, f.x(4, d + 1) + 0.5, 6.2, f.z(4, d + 1) + 0.5));
     }
 
     /** Weiß-blaue Raute auf hellblauem Grund. */

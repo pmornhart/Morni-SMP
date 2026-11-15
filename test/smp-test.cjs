@@ -64,9 +64,10 @@ async function inDim(name, dim) {
 async function safeGround(bot) {
   const p = bot.entity.position;
   await waitFor(() => bot.blockAt(p.offset(0, -0.5, 0)) != null && bot.blockAt(p.offset(0, 1, 0)) != null, 10000);
-  const ground = bot.blockAt(p.offset(0, -0.5, 0));
-  const feet = bot.blockAt(p);
-  const head = bot.blockAt(p.offset(0, 1, 0));
+  // Seelensand & Co. sind niedriger als ein Block: die Füße stehen dann noch im Bodenblock
+  const ground = bot.blockAt(p.offset(0, -0.2, 0));
+  const feet = bot.blockAt(p.offset(0, 0.5, 0));
+  const head = bot.blockAt(p.offset(0, 1.5, 0));
   const ok = ground && ground.boundingBox === 'block' && !/water|lava|magma|fire/.test(ground.name) &&
     feet && feet.boundingBox === 'empty' && !/lava|fire/.test(feet.name) && head && head.boundingBox === 'empty';
   return { ok: Boolean(ok), detail: `${ground?.name}/${feet?.name}/${head?.name} y=${p.y.toFixed(1)}` };
@@ -220,6 +221,14 @@ async function main() {
     const out = (await cmd(`execute in minecraft:smp_spawn if entity @e[type=text_display,tag=morni_smp_gate_${target}]`))
       .join(' ');
     check(`Reisetor ${target}: große Ziel-Schrift + „Reisetor“-Zeile`, /count: 2\b/i.test(out), out);
+    // Schrift steht frei (Luft), nicht in der Wand, und ist für den Client groß genug (kein Punkt → kein Wegschneiden)
+    const sel = `@e[type=text_display,tag=morni_smp_gate_${target}]`;
+    const free = (await cmd(`execute in minecraft:smp_spawn as ${sel} at @s if block ~ ~ ~ minecraft:air`)).join(' ');
+    const size = (await cmd(`execute in minecraft:smp_spawn as ${sel} at @s if entity @s[nbt={width:14.0f,height:3.0f}]`))
+      .join(' ');
+    const where = (await cmd(`execute in minecraft:smp_spawn as ${sel} run data get entity @s Pos`)).join(' ');
+    check(`Reisetor ${target}: Schrift frei in der Luft, Größe gesetzt`, (free.match(/passed/gi) ?? []).length === 2 && (size.match(/passed/gi) ?? []).length === 2,
+      where.replace(/Text Display has the following entity data: /g, ''));
   }
   const fountain = anna.findBlocks({ matching: (b) => b.name === 'quartz_pillar' || b.name === 'gold_block', maxDistance: 16,
     count: 30 }).length;
