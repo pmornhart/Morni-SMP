@@ -117,6 +117,18 @@ class TownPlanTest {
             }
             assertNotNull(plan.get(x, y - 1, z), "Wasser hat Boden");
         }
+        // Wasserfälle des Brunnens landen im Becken
+        int falls = 0;
+        for (Map.Entry<Long, String> e : plan.blocks().entrySet()) {
+            if (!e.getValue().equals("water[level=8]")) {
+                continue;
+            }
+            falls++;
+            String below = plan.get(Plan.x(e.getKey()), Plan.y(e.getKey()) - 1, Plan.z(e.getKey()));
+            assertTrue(below != null && below.startsWith("water"), "Wasserfall landet im Wasser");
+        }
+        assertTrue(falls >= 4, "vier Wasserfälle");
+        assertTrue(layout.boardY() > 9, "Bestenliste über der Brunnenspitze");
     }
 
     @Test

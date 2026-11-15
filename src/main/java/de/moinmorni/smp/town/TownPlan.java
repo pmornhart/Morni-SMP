@@ -28,7 +28,7 @@ import java.util.Map;
 public final class TownPlan {
 
     /** Bau-Fassung: wird sie erhöht, baut sich die Stadt beim nächsten Start neu (Stände werden vorher geräumt). */
-    public static final int VERSION = 2;
+    public static final int VERSION = 3;
 
     public static final int AREA = 58;
     public static final int FLAT = 51;
@@ -61,7 +61,7 @@ public final class TownPlan {
         t.signposts();
         Connect.run(t.plan);
         Layout layout = new Layout(0.5, 1, 10.5, 180f, AREA, FLAT, List.copyOf(t.stalls), Map.copyOf(t.triggers),
-                List.copyOf(t.gates), 0.5, 5.4, 0.5);
+                List.copyOf(t.gates), 0.5, 10.3, 0.5);
         return new Result(t.plan, layout);
     }
 
@@ -162,28 +162,73 @@ public final class TownPlan {
     }
 
     /** Brunnen in der Mitte: rundes Becken, Säule mit goldener Kugel, darüber die Bestenliste. */
+    /**
+     * Brunnen aus hellem Marmor (Quarz, Kalzit) mit Gold: unten ein großes Becken, in der Mitte eine Säule mit einer
+     * Schale, aus der nach vier Seiten Wasser ins Becken fällt; Laternen auf goldenen Sockeln, Blumentöpfe ringsum.
+     */
     private void fountain() {
         for (int x = -5; x <= 5; x++) {
             for (int z = -5; z <= 5; z++) {
                 int d2 = x * x + z * z;
-                if (d2 <= 10) {
-                    plan.set(x, 0, z, "stone_bricks");
+                if (d2 <= 13) {
+                    plan.set(x, 0, z, "smooth_quartz");
                     plan.set(x, 1, z, "water");
                 } else if (d2 <= 20) {
-                    plan.set(x, 0, z, "stone_bricks");
-                    plan.set(x, 1, z, "polished_andesite");
+                    plan.set(x, 0, z, "smooth_quartz");
+                    plan.set(x, 1, z, "quartz_bricks");
+                    plan.set(x, 2, z, "smooth_quartz_slab[type=bottom]");
                 } else if (d2 <= 26) {
-                    plan.set(x, 0, z, Math.abs(x) == Math.abs(z) ? "chiseled_stone_bricks" : "smooth_stone");
+                    plan.set(x, 0, z, Math.abs(x) == 5 || Math.abs(z) == 5 ? "chiseled_quartz_block" : "calcite");
                 }
             }
         }
-        plan.set(0, 1, 0, "chiseled_stone_bricks");
-        plan.set(0, 2, 0, "stone_brick_wall");
-        plan.set(0, 3, 0, "stone_brick_wall");
-        plan.set(0, 4, 0, "gold_block");
-        // vier kleine Wasserspeier-Steine im Becken
-        for (int[] d : new int[][] {{2, 0}, {-2, 0}, {0, 2}, {0, -2}}) {
-            plan.set(d[0], 1, d[1], "prismarine_bricks");
+        // Säule
+        plan.set(0, 1, 0, "chiseled_quartz_block");
+        for (int y = 2; y <= 4; y++) {
+            plan.set(0, y, 0, "quartz_pillar[axis=y]");
+        }
+        // Schale: Boden, Rand mit Gold, Wasser
+        for (int x = -2; x <= 2; x++) {
+            for (int z = -2; z <= 2; z++) {
+                int d2 = x * x + z * z;
+                if (d2 > 5) {
+                    continue;
+                }
+                plan.set(x, 5, z, d2 == 0 ? "gold_block" : "smooth_quartz");
+                if (d2 >= 4) {
+                    plan.set(x, 6, z, "smooth_quartz");
+                    if (d2 == 5) {
+                        plan.set(x, 7, z, "light_weighted_pressure_plate");
+                    }
+                } else if (d2 > 0) {
+                    plan.set(x, 6, z, "water");
+                }
+            }
+        }
+        // Spitze: Säule, Gold, Laterne
+        plan.set(0, 6, 0, "quartz_pillar[axis=y]");
+        plan.set(0, 7, 0, "chiseled_quartz_block");
+        plan.set(0, 8, 0, "gold_block");
+        plan.set(0, 9, 0, "lantern[hanging=false]");
+        // vier Wasserfälle: Kerbe im Schalenrand, dann senkrecht ins Becken
+        for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            plan.set(2 * d[0], 6, 2 * d[1], "water[level=1]");
+            plan.set(2 * d[0], 7, 2 * d[1], "air");
+            plan.set(3 * d[0], 6, 3 * d[1], "water[level=2]");
+            for (int y = 2; y <= 5; y++) {
+                plan.set(3 * d[0], y, 3 * d[1], "water[level=8]");
+            }
+        }
+        // Laternen auf goldenen Sockeln am Beckenrand (diagonal)
+        for (int[] d : new int[][] {{3, 3}, {-3, 3}, {3, -3}, {-3, -3}}) {
+            plan.set(d[0], 2, d[1], "gold_block");
+            plan.set(d[0], 3, d[1], "lantern[hanging=false]");
+        }
+        // Blumentöpfe auf dem Marmorrand rundum
+        String[] pots = {"potted_red_tulip", "potted_blue_orchid", "potted_allium", "potted_cornflower"};
+        int i = 0;
+        for (int[] d : new int[][] {{4, 3}, {-4, 3}, {4, -3}, {-4, -3}, {3, 4}, {-3, 4}, {3, -4}, {-3, -4}}) {
+            plan.set(d[0], 1, d[1], pots[i++ % pots.length]);
         }
         // Blumen rund um den Brunnen
         for (int[] d : new int[][] {{5, 2}, {5, -2}, {-5, 2}, {-5, -2}, {2, 5}, {-2, 5}, {2, -5}, {-2, -5}}) {
@@ -740,7 +785,7 @@ public final class TownPlan {
         float yaw = (float) Math.toDegrees(Math.atan2(-in.dx, in.dz));
         String axis = out.dx == 0 ? "x" : "z";
         gates.add(new Layout.Gate(theme.target(), box, f.x(4, d + 2) + 0.5, f.z(4, d + 2) + 0.5, yaw, membrane,
-                axis, f.x(4, d + 1) + 0.5, 10.6, f.z(4, d + 1) + 0.5));
+                axis, f.x(4, d + 2) + 0.5, 9.6, f.z(4, d + 2) + 0.5));
     }
 
     /** Weiß-blaue Raute auf hellblauem Grund. */

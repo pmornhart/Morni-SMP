@@ -162,6 +162,7 @@ public final class SmpPlugin extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, s.combat::tick, SECOND, SECOND);
         getServer().getScheduler().runTaskTimer(this, sidebar::tick, 2 * SECOND, 2 * SECOND);
         getServer().getScheduler().runTaskTimer(this, gateDecor::particles, SECOND, SECOND / 2);
+        getServer().getScheduler().runTaskTimer(this, gateDecor::repair, 10 * SECOND, 10 * SECOND);
         getServer().getScheduler().runTaskTimer(this, this::everyMinute, MINUTE, MINUTE);
         getServer().getScheduler().runTaskTimer(this, this::every30s, 10 * SECOND, 30 * SECOND);
         for (Player p : Bukkit.getOnlinePlayers()) {

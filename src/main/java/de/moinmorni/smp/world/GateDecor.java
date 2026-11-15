@@ -82,6 +82,8 @@ public final class GateDecor {
         Vector3f shift = alongX ? new Vector3f(0, 0, off) : new Vector3f(off, 0, 0);
         w.spawn(at, BlockDisplay.class, d -> {
             d.addScoreboardTag(TAG);
+            d.addScoreboardTag(TAG + "_" + g.target());
+            d.setViewRange(4f);
             d.setPersistent(false);
             d.setBlock(data);
             d.setBrightness(new Display.Brightness(15, 15));
@@ -89,25 +91,58 @@ public final class GateDecor {
         });
     }
 
+    /** Große Zielschrift (Oberwelt · Overworld / Nether / Das End · The End), darunter klein „Reisetor · Travel gate“. */
     private void label(World w, Layout.Gate g) {
-        String text = switch (g.target()) {
-            case "nether" -> "<red><b>NETHER</b></red>\n<gold>Reisetor · Travel gate</gold>";
-            case "end" -> "<light_purple><b>END</b></light_purple>\n<gold>Reisetor · Travel gate</gold>";
-            default -> "<green><b>OBERWELT</b></green> <gray>·</gray> <green><b>OVERWORLD</b></green>\n"
-                    + "<gold>Reisetor · Travel gate</gold>";
+        String title = switch (g.target()) {
+            case "nether" -> "<red><b>Nether</b></red>";
+            case "end" -> "<light_purple><b>Das End</b></light_purple> <gray>·</gray> <light_purple><b>The End</b></light_purple>";
+            default -> "<green><b>Oberwelt</b></green> <gray>·</gray> <green><b>Overworld</b></green>";
         };
-        Location at = new Location(w, g.labelX(), town.ground() + g.labelY(), g.labelZ());
+        double y = town.ground() + g.labelY();
+        text(w, g, new Location(w, g.labelX(), y + 1.0, g.labelZ()), title, 3.2f);
+        text(w, g, new Location(w, g.labelX(), y, g.labelZ()), "<gold>Reisetor · Travel gate</gold>", 1.5f);
+    }
+
+    private static void text(World w, Layout.Gate g, Location at, String mini, float scale) {
         w.spawn(at, TextDisplay.class, t -> {
             t.addScoreboardTag(TAG);
+            t.addScoreboardTag(TAG + "_" + g.target());
             t.setPersistent(false);
-            t.text(Texts.MM.deserialize(text));
+            t.text(Texts.MM.deserialize(mini));
             t.setBillboard(Display.Billboard.VERTICAL);
             t.setShadowed(true);
             t.setBackgroundColor(Color.fromARGB(110, 15, 20, 30));
-            t.setLineWidth(400);
-            t.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(2.2f, 2.2f, 2.2f),
-                    new AxisAngle4f()));
+            t.setLineWidth(600);
+            t.setViewRange(4f); // auch vom Marktplatz aus (≈ 250 Blöcke)
+            t.setBrightness(new Display.Brightness(15, 15));
+            t.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(),
+                    new Vector3f(scale, scale, scale), new AxisAngle4f()));
         });
+    }
+
+    /** Alle 10 Sekunden: fehlt an einem Tor etwas (Chunk war beim Start nicht bereit), neu setzen. */
+    public void repair() {
+        if (!town.ready()) {
+            return;
+        }
+        World w = town.world();
+        for (Layout.Gate g : town.layout().gates()) {
+            Location c = new Location(w, g.labelX(), town.ground() + g.labelY(), g.labelZ());
+            if (!w.isChunkLoaded(c.getBlockX() >> 4, c.getBlockZ() >> 4)) {
+                continue;
+            }
+            long n = w.getNearbyEntities(c, 12, 12, 12).stream()
+                    .filter(e -> e.getScoreboardTags().contains(TAG + "_" + g.target())).count();
+            if (n < 3) {
+                for (Entity e : w.getNearbyEntities(c, 12, 12, 12)) {
+                    if (e.getScoreboardTags().contains(TAG + "_" + g.target())) {
+                        e.remove();
+                    }
+                }
+                membrane(w, g);
+                label(w, g);
+            }
+        }
     }
 
     /** Alle halbe Sekunde: Funken in den Toren, wenn jemand in der Nähe ist. */

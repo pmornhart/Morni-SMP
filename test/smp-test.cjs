@@ -216,6 +216,14 @@ async function main() {
   const labels = Object.values(anna.entities).filter((e) => e.name === 'text_display').length;
   const membranes = Object.values(anna.entities).filter((e) => e.name === 'block_display').length;
   check('Tore haben Beschriftung und schimmernde Fläche', labels >= 4 && membranes >= 3, `${labels} Schriften, ${membranes} Flächen`);
+  for (const target of ['overworld', 'nether', 'end']) {
+    const out = (await cmd(`execute in minecraft:smp_spawn if entity @e[type=text_display,tag=morni_smp_gate_${target}]`))
+      .join(' ');
+    check(`Reisetor ${target}: große Ziel-Schrift + „Reisetor“-Zeile`, /count: 2\b/i.test(out), out);
+  }
+  const fountain = anna.findBlocks({ matching: (b) => b.name === 'quartz_pillar' || b.name === 'gold_block', maxDistance: 16,
+    count: 30 }).length;
+  check('Marmor-Brunnen mit Gold auf dem Marktplatz', fountain >= 8, `${fountain} Quarzsäulen/Goldblöcke`);
   const DIMS = { overworld: 'minecraft:overworld', nether: 'minecraft:the_nether', end: 'minecraft:the_end' };
   for (const target of ['overworld', 'nether', 'end']) {
     const g = gates[target];
