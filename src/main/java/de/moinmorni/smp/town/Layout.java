@@ -15,10 +15,8 @@ public record Layout(
         List<StallSpot> stalls,
         /* Block → was ein Rechtsklick öffnet: „ah“, „orders“, „buyback“, „mail“, „stall“ */
         Map<Long, String> triggers,
-        /* Reisetor: Füße in diesem Kasten → Zufalls-Teleport-Menü */
-        Box gate,
-        /* wohin man nach dem Menü zurückgeschoben wird */
-        double gateBackX, double gateBackZ,
+        /* die drei Reisetore (Oberwelt, Nether, End) */
+        List<Gate> gates,
         /* Bestenliste (Mitte unten der Schrift) */
         double boardX, double boardY, double boardZ) {
 
@@ -36,6 +34,16 @@ public record Layout(
         public boolean containsXZ(int x, int z) {
             return x >= x1 && x <= x2 && z >= z1 && z <= z2;
         }
+    }
+
+    /**
+     * Ein Reisetor. {@code target}: „overworld“, „nether“ oder „end“. {@code box}: Füße darin → Zufalls-Teleport in diese
+     * Dimension. {@code back*}: wohin man (in die Stadt) zurückgeschoben wird, bis der Platz gefunden ist.
+     * {@code membrane}: die Öffnung, in der das schimmernde Tor-Bild steht ({@code axis}: „x“ = Fläche entlang x).
+     * {@code label*}: Mitte der großen Beschriftung über dem Bogen (Stadtseite).
+     */
+    public record Gate(String target, Box box, double backX, double backZ, float backYaw, Box membrane, String axis,
+                       double labelX, double labelY, double labelZ) {
     }
 
     /**

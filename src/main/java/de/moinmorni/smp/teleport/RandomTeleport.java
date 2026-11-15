@@ -1,7 +1,6 @@
 package de.moinmorni.smp.teleport;
 
 import de.moinmorni.smp.Smp;
-import de.moinmorni.smp.player.Players;
 import de.moinmorni.smp.text.Msg;
 import de.moinmorni.smp.ui.Items;
 import de.moinmorni.smp.ui.Menu;
@@ -9,7 +8,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,9 +22,11 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 
 /**
- * Zufalls-Teleport: Menü mit Nah, Mittel und Weit (dazu Nether und End, wenn man dort schon war). Gesucht wird ein
- * sicherer Ort (fester Boden, Platz für Kopf und Füße, unter freiem Himmel, kein Grundstück, nicht in der Stadt); die
- * Chunks werden dabei im Hintergrund geladen. Danach läuft die normale Wartezeit. Abklingzeit nach jedem Sprung.
+ * Zufalls-Teleport: Menü mit Oberwelt (Nah, Mittel, Weit), Nether und End – auch die Reisetore der Marktstadt landen
+ * hier. Gesucht wird ein sicherer Ort (fester Boden, Platz für Kopf und Füße, kein Grundstück; Oberwelt und End unter
+ * freiem Himmel, Nether zwischen y 32 und 110 unter dem Dach, nie auf Lava); die Chunks werden im Hintergrund geladen.
+ * Im End geht es auf die äußeren Inseln, findet sich dort nichts, auf die Hauptinsel – nie in die Leere. Per Befehl
+ * läuft danach die normale Wartezeit, aus einem Reisetor geht es sofort. Abklingzeit nach jedem Sprung.
  */
 public final class RandomTeleport {
 
@@ -50,8 +50,8 @@ public final class RandomTeleport {
 
     /** Die Ziele in der Reihenfolge des Menüs. */
     enum Target {
-        NAH(Material.OAK_SAPLING, 10), MITTEL(Material.SPRUCE_SAPLING, 12), WEIT(Material.COMPASS, 14),
-        NETHER(Material.NETHERRACK, 16), END(Material.END_STONE, 22);
+        NAH(Material.OAK_SAPLING, 11), MITTEL(Material.SPRUCE_SAPLING, 12), WEIT(Material.COMPASS, 13),
+        NETHER(Material.NETHERRACK, 15), END(Material.END_STONE, 16);
 
         final Material icon;
         final int slot;
@@ -65,7 +65,7 @@ public final class RandomTeleport {
             return name().toLowerCase(Locale.ROOT);
         }
 
-        static Target of(String s) {
+        public static Target of(String s) {
             String v = s.toLowerCase(Locale.ROOT);
             for (Target t : values()) {
                 if (t.id().equals(v)) {
@@ -73,7 +73,7 @@ public final class RandomTeleport {
                 }
             }
             return switch (v) {
-                case "near", "kurz" -> NAH;
+                case "near", "kurz", "oberwelt", "overworld", "welt" -> NAH;
                 case "medium", "mid" -> MITTEL;
                 case "far", "fern" -> WEIT;
                 default -> null;
@@ -97,11 +97,9 @@ public final class RandomTeleport {
     public void open(Player p) {
         String lang = s.msg.lang(p);
         Menu m = new Menu(3, s.msg.text(lang, "rtp.title"));
-        Optional<Players.Info> info = s.players.info(p.getUniqueId());
+        m.show(10, Items.button(Material.GRASS_BLOCK, s.msg.text(lang, "rtp.overworld"),
+                List.of(s.msg.text(lang, "rtp.overworld.lore"))));
         for (Target t : Target.values()) {
-            if (!available(t, info)) {
-                continue;
-            }
             SafeSpot.Band band = s.settings.rtpBands.get(t.id());
             m.set(t.slot, Items.button(t.icon, s.msg.text(lang, "rtp." + t.id()), List.of(
                     s.msg.text(lang, "rtp." + t.id() + ".lore"),
@@ -117,14 +115,6 @@ public final class RandomTeleport {
                 : s.msg.text(lang, "rtp.ready.lore"))));
         m.set(26, Items.button(Material.BARRIER, s.msg.text(lang, "menu.close")), (Player pl) -> pl.closeInventory());
         m.open(p);
-    }
-
-    private boolean available(Target t, Optional<Players.Info> info) {
-        return switch (t) {
-            case NETHER -> world(World.Environment.NETHER) != null && info.map(Players.Info::nether).orElse(false);
-            case END -> world(World.Environment.THE_END) != null && info.map(Players.Info::end).orElse(false);
-            default -> true;
-        };
     }
 
     private World world(World.Environment env) {
@@ -146,10 +136,20 @@ public final class RandomTeleport {
     }
 
     public void go(Player p, Target t) {
-        if (!available(t, s.players.info(p.getUniqueId()))) {
-            s.msg.send(p, "rtp.not-yet");
-            return;
-        }
+        go(p, t, false);
+    }
+
+    /** Aus einem Reisetor: „overworld“ (Ring aus der config.yml), „nether“, „end“ – ohne Wartezeit. */
+    public void gate(Player p, String target) {
+        Target t = switch (target) {
+            case "nether" -> Target.NETHER;
+            case "end" -> Target.END;
+            default -> Target.of(s.settings.gateOverworld);
+        };
+        go(p, t == null ? Target.NAH : t, true);
+    }
+
+    private void go(Player p, Target t, boolean instant) {
         long left = cooldownLeft(p);
         if (left > 0 && !s.admin(p)) {
             s.msg.send(p, "rtp.cooldown", Msg.t("time", Msg.duration(left, s.msg.lang(p))));
@@ -170,45 +170,66 @@ public final class RandomTeleport {
         });
         if (w == null) {
             searching.remove(p.getUniqueId());
-            s.msg.send(p, "rtp.not-yet");
+            s.msg.send(p, "rtp.no-world");
             return;
         }
-        s.msg.send(p, "rtp.searching");
+        s.msg.send(p, "rtp.searching." + (t == Target.NETHER || t == Target.END ? t.id() : "overworld"));
         int border = (int) Math.min(Integer.MAX_VALUE / 2, w.getWorldBorder().getSize() / 2);
-        attempt(p.getUniqueId(), w, s.settings.rtpBands.get(t.id()), border, 0);
+        attempt(new Search(p.getUniqueId(), w, s.settings.rtpBands.get(t.id()), border, instant,
+                t == Target.END), 0);
     }
 
-    private void attempt(UUID id, World w, SafeSpot.Band band, int border, int n) {
-        Player p = Bukkit.getPlayer(id);
+    /** Eine laufende Suche. {@code endFallback}: im End zuletzt auf der Hauptinsel suchen. */
+    private record Search(UUID id, World w, SafeSpot.Band band, int border, boolean instant, boolean endFallback) {
+    }
+
+    /** Hauptinsel des End: Ring um 0/0 (außerhalb des Brunnens, innerhalb des Inselrands). */
+    private static final SafeSpot.Band END_MAIN = new SafeSpot.Band(12, 70);
+
+    private void attempt(Search q, int n) {
+        Player p = Bukkit.getPlayer(q.id());
         if (p == null) {
-            searching.remove(id);
+            searching.remove(q.id());
             return;
         }
-        if (n >= TRIES) {
-            searching.remove(id);
+        boolean main = q.endFallback() && n >= TRIES;
+        if (n >= TRIES + (q.endFallback() ? TRIES : 0)) {
+            searching.remove(q.id());
             s.msg.send(p, "rtp.failed");
             return;
         }
-        Location centre = w.getWorldBorder().getCenter();
-        SafeSpot.Point pt = SafeSpot.pick(ThreadLocalRandom.current(), band, centre.getBlockX(), centre.getBlockZ(),
-                border, MARGIN);
+        SafeSpot.Point pt = main
+                ? SafeSpot.pick(ThreadLocalRandom.current(), END_MAIN, 0, 0, q.border(), 0)
+                : SafeSpot.pick(ThreadLocalRandom.current(), q.band(), 0, 0, q.border(), MARGIN);
+        World w = q.w();
         w.getChunkAtAsync(pt.x() >> 4, pt.z() >> 4, true).whenComplete((chunk, err) ->
                 Bukkit.getScheduler().runTask(s.plugin, () -> {
-                    Player pl = Bukkit.getPlayer(id);
+                    Player pl = Bukkit.getPlayer(q.id());
                     if (pl == null) {
-                        searching.remove(id);
+                        searching.remove(q.id());
                         return;
                     }
                     Location spot = err == null ? check(w, pt.x(), pt.z()) : null;
                     if (spot == null) {
-                        attempt(id, w, band, border, n + 1);
+                        attempt(q, n + 1);
                         return;
                     }
-                    searching.remove(id);
-                    s.teleports.start(pl, spot, "place.wild", () -> {
-                        cooldown.put(id, System.currentTimeMillis() + s.settings.rtpCooldownSeconds * 1000L);
+                    searching.remove(q.id());
+                    Runnable arrived = () -> {
+                        cooldown.put(q.id(), System.currentTimeMillis() + s.settings.rtpCooldownSeconds * 1000L);
                         s.msg.send(pl, "rtp.arrived", Msg.t("x", spot.getBlockX()), Msg.t("z", spot.getBlockZ()));
-                    });
+                    };
+                    if (q.instant()) {
+                        s.teleports.remember(pl);
+                        pl.teleportAsync(spot).thenAccept(ok -> {
+                            if (Boolean.TRUE.equals(ok)) {
+                                pl.playSound(pl.getLocation(), org.bukkit.Sound.BLOCK_PORTAL_TRAVEL, 0.25f, 1.4f);
+                                arrived.run();
+                            }
+                        });
+                    } else {
+                        s.teleports.start(pl, spot, "place.wild", arrived);
+                    }
                 }));
     }
 
@@ -224,7 +245,7 @@ public final class RandomTeleport {
         if (w.getEnvironment() == World.Environment.NETHER) {
             col = netherColumn(w, x, z);
             minY = 32;
-            maxY = 118;
+            maxY = 112;
             sky = false;
         } else {
             int y = w.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING);
@@ -240,7 +261,7 @@ public final class RandomTeleport {
     }
 
     private static SafeSpot.Column netherColumn(World w, int x, int z) {
-        for (int y = 32; y < 118; y++) {
+        for (int y = 32; y <= 110; y++) {
             SafeSpot.Column c = column(w, x, y, z, false);
             if (c.ground() == SafeSpot.Ground.SOLID && c.feetFree() && c.headFree()) {
                 return c;
@@ -263,7 +284,7 @@ public final class RandomTeleport {
                 || m == Material.TALL_SEAGRASS) {
             return SafeSpot.Ground.LIQUID;
         }
-        if (Tag.LEAVES.isTagged(m)) {
+        if (Tag.LEAVES.isTagged(m) || Tag.WART_BLOCKS.isTagged(m) || m == Material.SHROOMLIGHT) {
             return SafeSpot.Ground.LEAVES;
         }
         if (m.isSolid() && m.isOccluding() || m.isSolid() && (Tag.SLABS.isTagged(m) || Tag.STAIRS.isTagged(m)

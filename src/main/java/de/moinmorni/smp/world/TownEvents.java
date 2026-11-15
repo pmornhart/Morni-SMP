@@ -19,8 +19,8 @@ import org.bukkit.inventory.EquipmentSlot;
 
 /**
  * Was in der Marktstadt auf Klick passiert: Schalter des Auktionshauses, Auftragsbrett, Ankauf, Abholfach und die
- * Marktstände öffnen ihre Menüs; wer ins Reisetor tritt, bekommt das Zufalls-Teleport-Menü. Wer ohne Bett stirbt,
- * wacht in der Stadt auf.
+ * Marktstände öffnen ihre Menüs; wer durch eines der drei Reisetore geht, landet per Zufalls-Teleport in Oberwelt,
+ * Nether oder End. Wer ohne Bett stirbt oder von der Insel fällt, ist wieder in der Stadt.
  */
 public final class TownEvents implements Listener {
 
@@ -85,7 +85,18 @@ public final class TownEvents implements Listener {
             return;
         }
         Player p = e.getPlayer();
-        if (!s.town.inGate(e.getTo())) {
+        if (!s.town.isSpawnWorld(e.getTo().getWorld())) {
+            return;
+        }
+        // Von der Insel gefallen: zurück auf den Marktplatz (kein Tod in der Leere)
+        if (e.getTo().getY() < s.town.ground() - 48) {
+            p.setFallDistance(0);
+            p.teleport(s.town.spawn());
+            s.msg.bar(p, "spawn.fell");
+            return;
+        }
+        de.moinmorni.smp.town.Layout.Gate gate = s.town.gateAt(e.getTo());
+        if (gate == null) {
             return;
         }
         long now = System.currentTimeMillis();
@@ -94,18 +105,24 @@ public final class TownEvents implements Listener {
             return;
         }
         gateSeen.put(p.getUniqueId(), now);
-        // einen Schritt zurück, damit man nicht im Tor stehen bleibt
-        org.bukkit.Location back = s.town.gateBack();
-        back.setYaw(p.getLocation().getYaw());
-        back.setPitch(p.getLocation().getPitch());
-        p.teleport(back);
-        plugin.rtp().open(p);
+        // einen Schritt zurück in die Stadt, bis der Platz gefunden ist
+        p.teleport(s.town.gateBack(gate));
+        plugin.rtp().gate(p, gate.target());
     }
 
+    /** Ohne Bett/Anker (und beim Verlassen des End): zurück in die Marktstadt der Spawn-Welt. */
     @EventHandler(priority = EventPriority.HIGH)
     public void onRespawn(PlayerRespawnEvent e) {
         if (!e.isBedSpawn() && !e.isAnchorSpawn() && s.town.ready()) {
             e.setRespawnLocation(s.town.spawn());
+        }
+    }
+
+    /** In der Spawn-Welt gibt es keine echten Portale (falls doch eins entsteht, führt es nirgends hin). */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPortal(org.bukkit.event.player.PlayerPortalEvent e) {
+        if (s.town.isSpawnWorld(e.getFrom().getWorld())) {
+            e.setCancelled(true);
         }
     }
 

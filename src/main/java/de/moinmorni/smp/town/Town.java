@@ -6,8 +6,9 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 
 /**
- * Die Marktstadt zur Laufzeit: Wo liegt sie (Welt, Höhe), was ist wo (Stände, Auslöser, Reisetor)? Mitte ist immer
- * 0/0 der Hauptwelt; {@link #ground()} ist die Höhe der Bodenschicht (aus dem ersten Bau).
+ * Die Marktstadt zur Laufzeit: Wo liegt sie (Welt, Höhe), was ist wo (Stände, Auslöser, Reisetore)? Sie steht bei 0/0
+ * der eigenen Spawn-Welt (Leere, nur die Stadt-Insel); {@link #ground()} ist die Höhe der Bodenschicht. Die ganze
+ * Spawn-Welt gilt als Stadt (geschützt, keine Grundstücke).
  */
 public final class Town {
 
@@ -58,9 +59,14 @@ public final class Town {
         return Math.max(Math.abs(x), Math.abs(z));
     }
 
-    /** Liegt die Stelle in der geschützten Stadt (ganze Höhe)? */
+    /** Liegt die Stelle in der geschützten Stadt? Das ist die ganze Spawn-Welt. */
     public boolean inArea(World w, int x, int z) {
-        return world != null && w != null && w.equals(world) && cheb(x, z) <= layout.area();
+        return world != null && w != null && w.equals(world);
+    }
+
+    /** Ist das die Spawn-Welt? */
+    public boolean isSpawnWorld(World w) {
+        return world != null && world.equals(w);
     }
 
     public boolean inArea(Location l) {
@@ -132,16 +138,22 @@ public final class Town {
         return layout.triggers().get(Plan.pack(b.getX(), b.getY() - ground, b.getZ()));
     }
 
-    /** Stehen die Füße im Reisetor? */
-    public boolean inGate(Location l) {
+    /** Reisetor, in dem die Füße stehen (sonst null). */
+    public Layout.Gate gateAt(Location l) {
         if (!known() || !inArea(l)) {
-            return false;
+            return null;
         }
-        return layout.gate().contains(l.getBlockX(), l.getBlockY() - ground, l.getBlockZ());
+        for (Layout.Gate g : layout.gates()) {
+            if (g.box().contains(l.getBlockX(), l.getBlockY() - ground, l.getBlockZ())) {
+                return g;
+            }
+        }
+        return null;
     }
 
-    public Location gateBack() {
-        return new Location(world, layout.gateBackX(), ground + 1, layout.gateBackZ(), -90f, 0f);
+    /** Wohin man aus einem Reisetor zurückgeschoben wird (in der Stadt, Blick zur Stadt). */
+    public Location gateBack(Layout.Gate g) {
+        return new Location(world, g.backX(), ground + 1, g.backZ(), g.backYaw(), 0f);
     }
 
     /** Ankunftspunkt (Füße), Blick nach Norden zum Brunnen. */

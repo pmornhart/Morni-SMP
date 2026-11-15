@@ -11,7 +11,7 @@ waehrung:
   zahlen-bestaetigen-ab: 1000
 
 welt:
-  # Hauptwelt (dort steht die Marktstadt um 0/0)
+  # Hauptwelt (Oberwelt); Nether und End sind die normalen Dimensionen dazu
   name: world
   # Weltgrenze als Radius um 0/0 (Blöcke)
   grenze-radius: 10000
@@ -21,6 +21,18 @@ welt:
   kampf-sekunden: 15
   # Zeitzone für Tageszähler (Belohnung, Ankauf)
   zeitzone: Europe/Berlin
+
+# Die Marktstadt steht in einer eigenen, leeren Welt (eine Art vierte Dimension): immer Tag, kein Wetter, keine
+# Monster, ganz geschützt. Neue Spieler, /spawn und wer ohne Bett stirbt, landen dort. Drei Reisetore führen per
+# Zufalls-Teleport in Oberwelt, Nether und End.
+spawnwelt:
+  name: smp_spawn
+  # Höhe der Stadt-Insel (Bodenschicht)
+  hoehe: 90
+
+reisetore:
+  # Welcher Ring beim Tor zur Oberwelt: nah, mittel oder weit
+  oberwelt: nah
 
 teleport:
   # Wartezeit vor jedem Teleport (stillhalten!)
@@ -37,7 +49,9 @@ zufallsteleport:
   nah: [500, 2000]
   mittel: [2000, 5000]
   weit: [5000, 9500]
+  # Nether: sicherer Platz zwischen y 32 und 110 (nie auf Lava, nie aufs Dach)
   nether: [100, 1100]
+  # End: auf den äußeren Inseln, sonst auf der Hauptinsel – nie in die Leere
   end: [1000, 5000]
 
 auktionshaus:
@@ -65,14 +79,13 @@ marktstaende:
   # So viele Wochen darf man im Voraus zahlen
   max-wochen-im-voraus: 4
 
+# In Oberwelt, Nether und End (nicht in der Spawn-Welt)
 grundstuecke:
   # So viele Chunks sind gratis
   gratis: 4
   # Preis für jeden weiteren Chunk
   preis: 250
   max: 64
-  # Mindestabstand zur Stadt in Chunks
-  abstand-zur-stadt: 2
 
 # Ankauf der Stadt: nur Ernte und Beute von Monstern/Tieren (keine Erze, keine Blöcke – die handeln Spieler
 # untereinander). „preis“ pro Stück, „tag“ = so viele Stück pro Tag zum vollen Preis; danach zahlt die Stadt

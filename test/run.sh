@@ -44,7 +44,7 @@ fi
 
 echo "== Server einrichten: $SERVER"
 if [ "${FRESH:-0}" = "1" ]; then
-  rm -rf "$SERVER/world" "$SERVER/world_nether" "$SERVER/world_the_end" "$SERVER/plugins/MorniSMP"
+  rm -rf "$SERVER/world" "$SERVER/world_nether" "$SERVER/world_the_end" "$SERVER/smp_spawn" "$SERVER/plugins/MorniSMP"
 fi
 mkdir -p "$SERVER/plugins/MorniSMP"
 if [ -d "$TEMPLATE" ] && [ ! -d "$SERVER/libraries" ]; then
@@ -73,12 +73,12 @@ enforce-whitelist=false
 motd=MorniSMP Test
 difficulty=peaceful
 EOF
-# Testwerte: Belohnung sofort, kurze Abklingzeit des Zufalls-Teleports.
+# Testwerte: Belohnung sofort, kurze Abklingzeit des Zufalls-Teleports (5 s).
 cat > "$SERVER/plugins/MorniSMP/config.yml" <<'EOF'
 belohnung:
   mindest-minuten: 0
 zufallsteleport:
-  abklingzeit-sekunden: 30
+  abklingzeit-sekunden: 5
 EOF
 rm -f "$SERVER/plugins/"Morni-SMP*.jar "$SERVER/plugins/MoinMorni-FakeNetwork.jar"
 # Test-Netzwerk (NO_NETWORK=1: MorniSMP läuft allein): Cleo spricht Englisch, Meldungen landen in calls.log.

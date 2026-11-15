@@ -101,10 +101,12 @@ final class TextsGeneral {
                 + "sichere dir ein Grundstück und baue dir etwas auf.",
                 "Great to have you! To start, you get <au><money></au>. Trade on the market, claim some land and build "
                         + "something.");
-        t("welcome.help", "<mu>Tipp:</mu> <au>/smp</au> zeigt alle Befehle · Das <bl>Reisetor</bl> im Westen bringt "
-                + "dich in die Wildnis · Auktionshaus und Auftragsbrett liegen im Norden.",
-                "<mu>Tip:</mu> <au>/smp</au> lists all commands · The <bl>travel gate</bl> in the west takes you into the "
-                        + "wild · Auction house and order board are in the north.");
+        t("welcome.help", "<mu>Tipp:</mu> <au>/smp</au> zeigt alle Befehle · Die drei <bl>Reisetore</bl> in der Stadtmauer "
+                + "bringen dich in die Wildnis: <green>West = Oberwelt</green>, <red>Nord = Nether</red>, "
+                + "<light_purple>Ost = End</light_purple>.",
+                "<mu>Tip:</mu> <au>/smp</au> lists all commands · The three <bl>travel gates</bl> in the town wall take "
+                        + "you into the wild: <green>west = Overworld</green>, <red>north = Nether</red>, "
+                        + "<light_purple>east = End</light_purple>.");
         t("welcome.back", "Willkommen zurück! Kontostand: <au><balance></au>",
                 "Welcome back! Balance: <au><balance></au>");
 
@@ -174,9 +176,8 @@ final class TextsGeneral {
                 "<red>There's no home called “<name>”. <mu>/homes lists them.</mu></red>");
         t("home.world-gone", "<red>Die Welt dieses Zuhauses gibt es nicht mehr.</red>",
                 "<red>The world of this home no longer exists.</red>");
-        t("home.no-end", "<red>Im End kannst du kein Zuhause setzen.</red>", "<red>You can't set a home in the End.</red>");
-        t("home.not-in-town", "<red>In der Marktstadt kannst du kein Zuhause setzen – /spawn bringt dich hierher.</red>",
-                "<red>You can't set a home in the market town – /spawn brings you here.</red>");
+        t("home.not-in-town", "<red>In der Spawn-Welt kannst du kein Zuhause setzen – /spawn bringt dich hierher.</red>",
+                "<red>You can't set a home in the spawn world – /spawn brings you here.</red>");
         t("home.menu.title", "Deine Zuhause", "Your homes");
         t("home.menu.where", "<mu><world> · <x> <y> <z></mu>", "<mu><world> · <x> <y> <z></mu>");
         t("home.menu.click", "<em>Klick: hin</em>", "<em>Click: go there</em>");
@@ -256,8 +257,8 @@ final class TextsGeneral {
                 " <mu>Shop:</mu> chest + sign with <au>[Shop]</au> on the first line (own land or stall)");
         t("help.claims", " <au>/gs sichern</au> Chunk sichern · <au>/gs</au> Info · <au>/gs vertrauen \\<spieler></au>",
                 " <au>/gs sichern</au> claim chunk · <au>/gs</au> info · <au>/gs vertrauen \\<player></au> trust");
-        t("help.travel", " <au>/spawn</au> Marktstadt · <au>/rtp</au> Zufalls-Teleport · <au>/back</au> zurück",
-                " <au>/spawn</au> market town · <au>/rtp</au> random teleport · <au>/back</au> go back");
+        t("help.travel", " <au>/spawn</au> Marktstadt · <au>/rtp</au> Zufalls-Teleport (Oberwelt, Nether, End) · <au>/back</au> zurück",
+                " <au>/spawn</au> market town · <au>/rtp</au> random teleport (Overworld, Nether, End) · <au>/back</au> go back");
         t("help.homes", " <au>/sethome [name]</au> · <au>/home [name]</au> · <au>/homes</au> · <au>/delhome \\<name></au>",
                 " <au>/sethome [name]</au> · <au>/home [name]</au> · <au>/homes</au> · <au>/delhome \\<name></au>");
         t("help.tpa", " <au>/tpa \\<spieler></au> · <au>/tpahere \\<spieler></au> · <au>/tpaccept</au> · <au>/tpdeny</au>",
@@ -273,8 +274,8 @@ final class TextsGeneral {
                 " <au>geld geben|nehmen|setzen \\<player> \\<amount></au> (give|take|set)");
         t("admin.help.bau", " <au>bau</au> – Bau-Modus (Stadt und Grundstücke bearbeiten)",
                 " <au>bau</au> – build mode (edit town and claims)");
-        t("admin.help.stadt", " <au>stadt [neu]</au> – Stand der Marktstadt / neu bauen",
-                " <au>stadt [neu]</au> – market town status / rebuild");
+        t("admin.help.stadt", " <au>stadt [neu|tore]</au> – Stand der Marktstadt / neu bauen / Reisetore",
+                " <au>stadt [neu|tore]</au> – market town status / rebuild / travel gates");
         t("admin.help.neuladen", " <au>neuladen</au> – config.yml neu lesen", " <au>neuladen</au> – reload config.yml");
         t("admin.help.stand", " <au>stand frei \\<nummer></au> – Stand räumen (Sachen ins Abholfach)",
                 " <au>stand frei \\<number></au> – clear a stall (items to the mailbox)");
@@ -292,9 +293,11 @@ final class TextsGeneral {
         t("admin.build.off", "Bau-Modus aus.", "Build mode off.");
         t("admin.town.rebuilding", "Die Marktstadt wird neu gebaut …", "Rebuilding the market town …");
         t("admin.town.busy", "<red>Es wird gerade schon gebaut.</red>", "<red>A build is already running.</red>");
-        t("admin.town.info", "Marktstadt: fertig <white><ready></white>, Boden y=<white><y></white>, "
+        t("admin.town.gate", " <au><target></au>: Tor <white><gate></white>, davor <white><back></white>",
+                " <au><target></au>: gate <white><gate></white>, in front <white><back></white>");
+        t("admin.town.info", "Marktstadt in <white><world></white>: fertig <white><ready></white>, Boden y=<white><y></white>, "
                 + "<white><stalls></white> Stände, Ankunft <white><spawn></white>",
-                "Market town: ready <white><ready></white>, ground y=<white><y></white>, <white><stalls></white> "
+                "Market town in <white><world></white>: ready <white><ready></white>, ground y=<white><y></white>, <white><stalls></white> "
                         + "stalls, arrival <white><spawn></white>");
         t("admin.stall.usage", "So geht's: <au>/smpadmin stand frei \\<nummer></au>",
                 "Usage: <au>/smpadmin stand frei \\<number></au>");

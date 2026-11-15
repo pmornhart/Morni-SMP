@@ -37,7 +37,7 @@ class TextsTest {
     private static final List<String> NOT_TEXT = List.of("minecraft:", "morni.smp", "town.version", "town.y",
             "welt.", "waehrung.", "ankauf.", "grundstuecke.", "kopfgeld.", "belohnung.", "anzeige.", "zufallsteleport.",
             "teleport.wartezeit", "teleport.admins", "teleport.zuhause", "auktionshaus.", "auftraege.", "laeden.",
-            "marktstaende.", "moinmorni.net", "mornismp.db");
+            "marktstaende.", "moinmorni.net", "mornismp.db", "spawnwelt.", "reisetore.", "spawnworld.");
 
     private static List<Path> sources() throws IOException {
         try (Stream<Path> s = Files.walk(Path.of("src/main/java"))) {
@@ -80,6 +80,9 @@ class TextsTest {
         for (String t : List.of("nah", "mittel", "weit", "nether", "end")) {
             used.add("rtp." + t);
             used.add("rtp." + t + ".lore");
+        }
+        for (String t : List.of("overworld", "nether", "end")) {
+            used.add("rtp.searching." + t);
         }
         for (String k : List.of("sichern", "aufgeben", "info", "liste", "vertrauen", "misstrauen", "pvp", "grenzen")) {
             used.add("claim.help." + k);

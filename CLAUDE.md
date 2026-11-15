@@ -3,8 +3,9 @@
 @STAND.md
 
 Spielmodus „Überleben mit freiem Markt“ des MoinMorni-Netzwerks (Paper-Plugin `MorniSMP`, Java 25, Paper 26.x).
-Kennung im Netzwerk: **`mirni`** (angezeigt „MorniSMP“). Baut seine Marktstadt selbst aus dem Code, läuft im Netzwerk
-und auch ganz allein.
+Kennung im Netzwerk: **`mirni`** (angezeigt „MorniSMP“). Baut seine Marktstadt selbst aus dem Code – als schwebende
+Insel in der eigenen Spawn-Welt `smp_spawn` (leer, immer Tag, geschützt) mit drei Reisetoren nach Oberwelt, Nether und
+End. Läuft im Netzwerk und auch ganz allein.
 
 ## Regeln für dieses Repo
 
@@ -24,7 +25,8 @@ und auch ganz allein.
 - Geld nur über `economy/Bank` bewegen (in `Database.tx`): jede Bewegung steht im Kassenbuch, Konten werden nie
   negativ. Geld in Hundertstel-Talern (`long`).
 - Ändert sich die Marktstadt: `TownPlan.VERSION` erhöhen – dann baut sie sich beim nächsten Start neu (Stände werden
-  vorher geräumt). Außerhalb der Stadt wird nie etwas verändert.
+  vorher geräumt). Gebaut wird nur in der Spawn-Welt; Oberwelt, Nether und End bleiben Vanilla (keine Bauten, keine
+  Eingriffe in Portale, Festungen oder den Drachenkampf).
 - Neue Tabellen/Spalten nur als neuer Schritt hinten in `db/Schema.STEPS` (alte nie ändern).
 - „Alles im Panel“: Einstellungen nur in der `config.yml` (keine Einstellungs-Befehle); die Anbindung an den
   Einstellungs-Katalog gehört ins Netzwerk-Repo.

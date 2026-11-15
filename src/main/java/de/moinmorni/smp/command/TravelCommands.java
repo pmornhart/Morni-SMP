@@ -62,10 +62,6 @@ public final class TravelCommands {
         return (sender, args) -> {
             Player p = (Player) sender;
             String name = args.length == 0 ? DEFAULT_HOME : args[0];
-            if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
-                s.msg.send(p, "home.no-end");
-                return;
-            }
             if (s.town.inArea(p.getLocation())) {
                 s.msg.send(p, "home.not-in-town");
                 return;

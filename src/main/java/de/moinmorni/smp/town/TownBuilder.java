@@ -45,8 +45,9 @@ import org.bukkit.scheduler.BukkitRunnable;
 public final class TownBuilder {
 
     private static final long BUDGET_NS = 20_000_000L;
-    private static final String KEY_VERSION = "town.version";
-    private static final String KEY_GROUND = "town.y";
+    /** Merkzettel (eigene Schlüssel für die Spawn-Welt; bis 0.1.0-Entwurf stand die Stadt in der Hauptwelt). */
+    private static final String KEY_VERSION = "spawnworld.town.version";
+    private static final String KEY_GROUND = "spawnworld.town.y";
 
     private final JavaPlugin plugin;
     private final Town town;
@@ -56,8 +57,11 @@ public final class TownBuilder {
     private boolean running;
     private final Map<String, BlockData> cache = new HashMap<>();
     private final Set<String> broken = new HashSet<>();
+    /** Höhe der Bodenschicht als schwebende Insel (eigene Spawn-Welt); 0 = auf vorhandenes Gelände bauen. */
+    private final int islandGround;
 
-    public TownBuilder(JavaPlugin plugin, Town town, TownPlan.Result plan, Meta meta) {
+    public TownBuilder(JavaPlugin plugin, Town town, TownPlan.Result plan, Meta meta, int islandGround) {
+        this.islandGround = islandGround;
         this.plugin = plugin;
         this.town = town;
         this.plan = plan;
@@ -139,6 +143,9 @@ public final class TownBuilder {
             }
         }
         int ground = storedGround;
+        if (ground == Integer.MIN_VALUE && islandGround > 0) {
+            ground = Math.max(world.getMinHeight() + 40, Math.min(world.getMaxHeight() - 40, islandGround));
+        }
         if (ground == Integer.MIN_VALUE) {
             int[] hs = flatHeights.stream().mapToInt(Integer::intValue).sorted().toArray();
             int median = hs.length == 0 ? world.getSeaLevel() : hs[hs.length / 2];
@@ -189,6 +196,10 @@ public final class TownBuilder {
     /** Gelände einer Spalte: Plateau (aufschütten/abtragen) oder Abhang zum alten Gelände. */
     private void shape(World w, int x, int z, int ground, int natural, int top, int area, int flat) {
         int d = Math.max(Math.abs(x), Math.abs(z));
+        if (islandGround > 0) {
+            island(w, x, z, ground, d, flat);
+            return;
+        }
         int target;
         if (d <= flat) {
             target = ground - 1; // die Bodenschicht selbst setzt der Plan
@@ -216,6 +227,44 @@ public final class TownBuilder {
             if (b.getType() == Material.DIRT || b.getType() == Material.STONE || b.getType().isAir()) {
                 b.setType(Material.GRASS_BLOCK, false);
             }
+        }
+    }
+
+    /**
+     * Schwebende Insel: unter dem Plateau Erde und Fels, nach unten spitz zulaufend (wie ein umgedrehter Berg), mit
+     * etwas Moos, Erzen und Leuchtsteinen; außerhalb des Plateaus bleibt Luft.
+     */
+    private void island(World w, int x, int z, int ground, int d, int flat) {
+        if (d > flat) {
+            return;
+        }
+        double r = Math.sqrt(x * (double) x + z * (double) z);
+        double t = Math.min(1.0, r / (flat * 1.42));
+        int depth = 3 + (int) Math.round((1 - t) * (1 - t) * 34) + Plan.noise(x, z, 71, 4);
+        for (int k = 1; k <= depth; k++) {
+            int y = ground - k;
+            if (y <= w.getMinHeight()) {
+                break;
+            }
+            String b;
+            if (k <= 3) {
+                b = "dirt";
+            } else if (k == depth && Plan.noise(x, z, 73, 9) == 0) {
+                b = "glowstone";
+            } else {
+                b = switch (Plan.noise(x + y, z, 79, 40)) {
+                    case 0 -> "coal_ore";
+                    case 1 -> "iron_ore";
+                    case 2, 3 -> "moss_block";
+                    case 4, 5, 6 -> "andesite";
+                    case 7, 8 -> "tuff";
+                    default -> "stone";
+                };
+            }
+            place(w, x, y, z, b);
+        }
+        if (Plan.noise(x, z, 83, 23) == 0) {
+            place(w, x, ground - depth - 1, z, "hanging_roots");
         }
     }
 
@@ -320,10 +369,12 @@ public final class TownBuilder {
         }
     }
 
-    /** Der Marktplatz bleibt geladen (Bestenliste, Stände laufen ab, auch wenn keiner dort ist). */
+    /** Die Stadt bleibt geladen (Bestenliste, Reisetore, Stände laufen ab, auch wenn keiner dort ist). */
     private void keepMarketLoaded(World world) {
-        for (int cx = -2; cx <= 1; cx++) {
-            for (int cz = -2; cz <= 1; cz++) {
+        int min = Math.floorDiv(-town.layout().area(), 16);
+        int max = Math.floorDiv(town.layout().area(), 16);
+        for (int cx = min; cx <= max; cx++) {
+            for (int cz = min; cz <= max; cz++) {
                 world.getChunkAt(cx, cz).addPluginChunkTicket(plugin);
             }
         }

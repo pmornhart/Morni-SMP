@@ -54,9 +54,27 @@ function plain(v) {
 
 const cmd = (...commands) => rcon(RCON, PASS, commands);
 
+/** In welcher Welt ist der Spieler (laut Server)? Schlüssel wie „minecraft:smp_spawn“, „minecraft:the_nether“. */
+async function inDim(name, dim) {
+  const out = await cmd(`execute as ${name} at @s if dimension ${dim}`);
+  return /passed/i.test(out.join(' '));
+}
+
+/** Fester, sicherer Boden unter den Füßen und Platz für Füße und Kopf (Sicht des Test-Spielers). */
+async function safeGround(bot) {
+  const p = bot.entity.position;
+  await waitFor(() => bot.blockAt(p.offset(0, -0.5, 0)) != null && bot.blockAt(p.offset(0, 1, 0)) != null, 10000);
+  const ground = bot.blockAt(p.offset(0, -0.5, 0));
+  const feet = bot.blockAt(p);
+  const head = bot.blockAt(p.offset(0, 1, 0));
+  const ok = ground && ground.boundingBox === 'block' && !/water|lava|magma|fire/.test(ground.name) &&
+    feet && feet.boundingBox === 'empty' && !/lava|fire/.test(feet.name) && head && head.boundingBox === 'empty';
+  return { ok: Boolean(ok), detail: `${ground?.name}/${feet?.name}/${head?.name} y=${p.y.toFixed(1)}` };
+}
+
 /** Steht der Block wirklich noch (Server fragen, nicht die Sicht des Test-Spielers)? */
-async function serverHas(pos, name) {
-  const out = await cmd(`execute if block ${pos.x} ${pos.y} ${pos.z} minecraft:${name}`);
+async function serverHas(pos, name, dim = 'minecraft:overworld') {
+  const out = await cmd(`execute in ${dim} if block ${pos.x} ${pos.y} ${pos.z} minecraft:${name}`);
   return /passed/i.test(out.join(' '));
 }
 
@@ -182,6 +200,74 @@ async function main() {
   const sidebar = Object.values(anna.scoreboards ?? {}).find((s) => /MorniSMP/.test(plain(s.title)));
   check('Leiste rechts mit MorniSMP', Boolean(sidebar));
 
+  // ------------------------------------------------------------------ Spawn-Welt und Reisetore
+  check('Neue Spieler landen in der Spawn-Welt (smp_spawn)', await inDim('Anna', 'minecraft:smp_spawn'));
+  const below = anna.blockAt(pos.offset(0, -6, 0));
+  check('Stadt schwebt als Insel (unter dem Platz Fels, ganz unten Leere)', below && below.name !== 'air' &&
+    (anna.blockAt(pos.offset(0, -60, 0))?.name ?? 'air') === 'air', below?.name);
+  const claimSpawn = await say(anna, '/gs sichern', /Spawn-Welt/);
+  check('Keine Grundstücke in der Spawn-Welt', claimSpawn !== '', claimSpawn);
+  const gateLines = (await cmd('smpadmin stadt tore')).join('\n');
+  const gates = {};
+  for (const m of gateLines.matchAll(/(overworld|nether|end)(?:§.)*: Tor (?:§.)*([-\d.]+) ([-\d.]+) ([-\d.]+)(?:§.)*, davor (?:§.)*([-\d.]+) ([-\d.]+) ([-\d.]+)/g)) {
+    gates[m[1]] = { gate: m.slice(2, 5).map(Number), back: m.slice(5, 8).map(Number) };
+  }
+  check('Drei Reisetore (Oberwelt, Nether, End)', Object.keys(gates).length === 3, Object.keys(gates).join(','));
+  const labels = Object.values(anna.entities).filter((e) => e.name === 'text_display').length;
+  const membranes = Object.values(anna.entities).filter((e) => e.name === 'block_display').length;
+  check('Tore haben Beschriftung und schimmernde Fläche', labels >= 4 && membranes >= 3, `${labels} Schriften, ${membranes} Flächen`);
+  const DIMS = { overworld: 'minecraft:overworld', nether: 'minecraft:the_nether', end: 'minecraft:the_end' };
+  for (const target of ['overworld', 'nether', 'end']) {
+    const g = gates[target];
+    if (!g) {
+      check(`Reisetor ${target}`, false, 'nicht gefunden');
+      continue;
+    }
+    await cmd(`execute in minecraft:smp_spawn run tp Anna ${g.back[0]} ${g.back[1]} ${g.back[2]}`);
+    await sleep(1500);
+    await anna.lookAt(anna.entity.position.offset(g.gate[0] - g.back[0], 1.6, g.gate[2] - g.back[2]), true);
+    clear(anna);
+    const startPos = anna.entity.position.clone();
+    anna.setControlState('forward', true);
+    // stehen bleiben, sobald es weggeht (zurückgeschoben = höchstens ein paar Blöcke, Teleport = weit weg)
+    await waitFor(() => anna.entity.position.distanceTo(startPos) > 40, 25000, 50);
+    anna.setControlState('forward', false);
+    const left = await waitFor(async () => !(await inDim('Anna', 'minecraft:smp_spawn')), 5000, 500);
+    const there = left && await inDim('Anna', DIMS[target]);
+    check(`Reisetor ${target}: hineingehen → richtige Dimension`, there, anna.entity.position.toString());
+    await sleep(2500);
+    const sg = await safeGround(anna);
+    check(`Reisetor ${target}: sicherer Boden`, sg.ok, sg.detail);
+    if (target === 'nether') {
+      const y = anna.entity.position.y;
+      check('Nether: zwischen y 32 und 111 (unter dem Dach)', y >= 32 && y <= 112, y.toFixed(1));
+    }
+    if (target === 'end') {
+      check('End: nicht in der Leere', anna.entity.position.y > 20, anna.entity.position.y.toFixed(1));
+    }
+    const pre = anna.entity.position.clone();
+    anna.chat('/spawn');
+    await waitFor(async () => await inDim('Anna', 'minecraft:smp_spawn'), 15000, 500);
+    check(`/spawn bringt aus ${target} zurück in die Spawn-Welt`, await inDim('Anna', 'minecraft:smp_spawn'), pre.toString());
+    await sleep(6000); // Abklingzeit im Test: 5 s
+  }
+  for (const target of ['nether', 'end']) {
+    clear(anna);
+    anna.chat(`/rtp ${target}`);
+    const ok = await waitFor(async () => await inDim('Anna', DIMS[target]), 40000, 500);
+    await waitFor(() => sees(anna, /Du bist bei/), 5000);
+    check(`/rtp ${target}: Suche + Wartezeit → ${target}`, ok && sees(anna, /sicheren Platz im/), anna.entity.position.toString());
+    await sleep(2500);
+    const sg = await safeGround(anna);
+    check(`/rtp ${target}: sicherer Boden`, sg.ok, sg.detail);
+    anna.chat('/spawn');
+    await waitFor(async () => await inDim('Anna', 'minecraft:smp_spawn'), 15000, 500);
+    await sleep(6000);
+  }
+  check('Wieder in der Spawn-Welt', await inDim('Anna', 'minecraft:smp_spawn'));
+  await cmd('execute in minecraft:smp_spawn run tp Anna ' + `${pos.x} ${pos.y} ${pos.z}`);
+  await sleep(1500);
+
   // ------------------------------------------------------------------ Geld
   const start = await balance(anna);
   check('/geld: Startguthaben 100 ₮', start === 100, String(start));
@@ -303,7 +389,7 @@ async function main() {
   const sign = signPos ? anna.blockAt(signPos) : null;
   check('Hängeschild eines Marktstands gefunden', Boolean(sign), signText(sign));
   if (sign) {
-    await cmd(`tp Anna ${sign.position.x + 0.5} ${sign.position.y - 2} ${sign.position.z + 0.5}`);
+    await cmd(`execute in minecraft:smp_spawn run tp Anna ${sign.position.x + 0.5} ${sign.position.y - 2} ${sign.position.z + 0.5}`);
     await sleep(1200);
     const sw = nextWindow(anna);
     await anna.activateBlock(anna.blockAt(sign.position));
@@ -347,7 +433,8 @@ async function main() {
       // abgebrochen ist auch gut
     }
     await sleep(1000);
-    check('Stadt ist geschützt (Block bleibt, laut Server)', await serverHas(target.position, name), name);
+    check('Stadt ist geschützt (Block bleibt, laut Server)', await serverHas(target.position, name, 'minecraft:smp_spawn'),
+      name);
   } else {
     check('Stadt ist geschützt (Block bleibt)', false, 'kein Block gefunden');
   }
@@ -362,7 +449,8 @@ async function main() {
   const p1 = anna.entity.position.clone();
   const dist = Math.hypot(p1.x, p1.z);
   check('/rtp nah: Suche + 3 s Wartezeit + Teleport', moved && sees(anna, /sicheren Platz/), p1.toString());
-  check('Ziel liegt im Ring 500–2000', dist >= 480 && dist <= 2020, `Abstand ${dist.toFixed(0)}`);
+  check('Ziel liegt im Ring 500–2000 in der Oberwelt', dist >= 480 && dist <= 2020 &&
+    await inDim('Anna', 'minecraft:overworld'), `Abstand ${dist.toFixed(0)}`);
   await waitFor(() => anna.blockAt(p1.offset(0, -0.5, 0)) != null, 10000);
   const ground = anna.blockAt(p1.offset(0, -0.5, 0));
   const feet = anna.blockAt(p1);
@@ -376,8 +464,18 @@ async function main() {
   await cmd('tp Bert Anna', 'gamemode creative Bert');
   await sleep(2500);
   const bp = bert.entity.position.floored();
-  const victim = bert.blockAt(bp.offset(1, -1, 0)) ?? bert.blockAt(bp.offset(0, -1, 0));
-  if (victim && victim.name !== 'air') {
+  // ein Block im selben Chunk wie Annas Grundstück (am Chunk-Rand wäre der Nachbar schon Wildnis)
+  const claimChunk = `${Math.floor(anna.entity.position.x / 16)}:${Math.floor(anna.entity.position.z / 16)}`;
+  let victim = null;
+  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [0, 0]]) {
+    const b = bert.blockAt(bp.offset(dx, -1, dz));
+    if (b && b.name !== 'air' && !/water|lava/.test(b.name) &&
+      `${Math.floor(b.position.x / 16)}:${Math.floor(b.position.z / 16)}` === claimChunk) {
+      victim = b;
+      break;
+    }
+  }
+  if (victim) {
     const name = victim.name;
     clear(bert);
     try {
@@ -480,7 +578,7 @@ async function main() {
   check('/sethome basis', (await say(anna, '/sethome basis', /gesetzt/)) !== '');
   anna.chat('/spawn');
   const toTown = await teleported(anna, base, 15000);
-  check('/spawn bringt in die Stadt', toTown && Math.hypot(anna.entity.position.x, anna.entity.position.z) < 60,
+  check('/spawn bringt in die Stadt (Spawn-Welt)', toTown && await inDim('Anna', 'minecraft:smp_spawn'),
     anna.entity.position.toString());
   await sleep(1500);
   const inTown = anna.entity.position.clone();
@@ -529,6 +627,25 @@ async function main() {
   check('Flucht im Kampf wird gemeldet', sees(anna, /Bert ist mitten im Kampf geflüchtet/), last(anna, /geflüchtet/));
   check('Kopfgeld (100 ₮) geht an Anna', sees(anna, /Anna hat Bert besiegt und 100 ₮ Kopfgeld kassiert/) &&
     (await balance(anna)) === richBefore + 100, last(anna, /Kopfgeld/));
+
+  // Echtes Netherportal in der Oberwelt (Vanilla): Rahmen per Konsole, anzünden, hineinstellen → Nether
+  {
+    await sleep(16000); // Kampf vorbei (Teleport im Kampf gesperrt)
+    const q = anna.entity.position.floored();
+    const x = q.x + 3;
+    const y = q.y + 1;
+    const z = q.z;
+    await cmd(`execute in minecraft:overworld run fill ${x - 1} ${y - 1} ${z - 1} ${x + 4} ${y + 5} ${z + 1} air`,
+      `execute in minecraft:overworld run fill ${x} ${y - 1} ${z} ${x + 3} ${y + 3} ${z} obsidian`,
+      `execute in minecraft:overworld run fill ${x + 1} ${y} ${z} ${x + 2} ${y + 2} ${z} air`,
+      `execute in minecraft:overworld run setblock ${x + 1} ${y} ${z} fire`);
+    await sleep(800);
+    const lit = await serverHas({ x: x + 1, y, z }, 'nether_portal');
+    check('Netherportal in der Oberwelt lässt sich entzünden', lit);
+    await cmd(`execute in minecraft:overworld run tp Anna ${x + 1.5} ${y} ${z + 0.5}`);
+    const nether = await waitFor(async () => await inDim('Anna', 'minecraft:the_nether'), 20000, 500);
+    check('Durchs Netherportal in den Nether (Vanilla)', nether, anna.entity.position.toString());
+  }
 
   // ------------------------------------------------------------------ Statistik/Admin
   const adm = await cmd('smpadmin info');

@@ -16,10 +16,11 @@ import java.util.Map;
  *   |c| ≤ 17   Marktplatz: Brunnen mit Bestenliste, 16 Marktstände (4 je Seite), Pflaster in weiß-blauen Rauten
  *   18…20      Ring um den Platz, von dort Gassen bis zur Mauer
  *   21…40      Häuserblöcke: Auktionshaus + Kontor mit Auftragsbrett (Nord), Ankauf + Abholfach (Ost),
- *              Reisetor + Gasthaus (West), Bürgerhäuser (Süd und in den vier Ecken), Gärten mit Bäumen
+ *              Wegweiser-Platz + Gasthaus (West), Bürgerhäuser (Süd und in den vier Ecken), Gärten mit Bäumen
  *   41…44      Wallgasse innen an der Mauer
- *   45…46      Stadtmauer mit Zinnen, vier Tortürme an den Hauptstraßen, runde Ecktürme
- *   47…51      Wiese vor der Mauer, darunter fällt das Plateau zum Gelände ab (52…58, macht der Baumeister)
+ *   45…46      Stadtmauer mit Zinnen, runde Ecktürme; drei Tore sind Reisetore (West: Oberwelt, Nord: Nether,
+ *              Ost: End), das Südtor ist ein Aussichtstor
+ *   47…51      Wiese vor der Mauer mit Zaun am Rand; die Stadt schwebt als Insel in der eigenen Spawn-Welt
  * </pre>
  *
  * Koordinaten: x nach Osten, z nach Süden, {@code y = 0} ist die Bodenschicht.
@@ -27,7 +28,7 @@ import java.util.Map;
 public final class TownPlan {
 
     /** Bau-Fassung: wird sie erhöht, baut sich die Stadt beim nächsten Start neu (Stände werden vorher geräumt). */
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
 
     public static final int AREA = 58;
     public static final int FLAT = 51;
@@ -37,7 +38,7 @@ public final class TownPlan {
     private final Plan plan = new Plan();
     private final List<StallSpot> stalls = new ArrayList<>();
     private final Map<Long, String> triggers = new HashMap<>();
-    private Box gate;
+    private final List<Layout.Gate> gates = new ArrayList<>();
 
     private TownPlan() {
     }
@@ -60,7 +61,7 @@ public final class TownPlan {
         t.signposts();
         Connect.run(t.plan);
         Layout layout = new Layout(0.5, 1, 10.5, 180f, AREA, FLAT, List.copyOf(t.stalls), Map.copyOf(t.triggers),
-                t.gate, -24.5, -10.5, 0.5, 5.4, 0.5);
+                List.copyOf(t.gates), 0.5, 5.4, 0.5);
         return new Result(t.plan, layout);
     }
 
@@ -70,6 +71,9 @@ public final class TownPlan {
         for (int x = -FLAT; x <= FLAT; x++) {
             for (int z = -FLAT; z <= FLAT; z++) {
                 plan.set(x, 0, z, "grass_block");
+                if (cheb(x, z) == FLAT) {
+                    plan.set(x, 1, z, "spruce_fence"); // Rand der Insel
+                }
             }
         }
     }
@@ -452,48 +456,25 @@ public final class TownPlan {
         trigger(f, 4, 5, -1, "mail");
     }
 
-    /** Reisetor: ein Steinbogen auf einem kleinen Platz; wer hindurchgeht, wählt ein Ziel in der Wildnis. */
+    /** Wegweiser-Platz vor dem Westtor (Reisetor zur Oberwelt): Pflaster, Bänke, Bäume, großer Wegweiser. */
     private void travelGate() {
         for (int x = -33; x <= -21; x++) {
             for (int z = -17; z <= -5; z++) {
                 plan.set(x, 0, z, (x + z) % 2 == 0 ? "stone_bricks" : "polished_andesite");
             }
         }
-        // Bogen bei x = -29…-28, Öffnung z = -12…-10, Höhe 1…4
-        for (int x = -29; x <= -28; x++) {
-            for (int z = -14; z <= -8; z++) {
-                boolean opening = z >= -12 && z <= -10;
-                for (int y = 1; y <= 6; y++) {
-                    if (opening && y <= 4) {
-                        continue;
-                    }
-                    plan.set(x, y, z, y == 6 ? "chiseled_stone_bricks" : "stone_bricks");
-                }
-                plan.set(x, 7, z, "stone_brick_slab[type=bottom]");
-            }
-            plan.set(x, 4, -12, "stone_brick_stairs[facing=north,half=top]");
-            plan.set(x, 4, -10, "stone_brick_stairs[facing=south,half=top]");
-            plan.set(x, 4, -11, "air");
-        }
-        plan.set(-28, 5, -11, "gold_block");
-        plan.set(-29, 5, -11, "gold_block");
-        // Laternen auf dem Bogen, Banner an den Pfeilern
-        plan.set(-28, 8, -14, "lantern[hanging=false]");
-        plan.set(-28, 8, -8, "lantern[hanging=false]");
-        for (int z : new int[] {-14, -8}) {
-            plan.banner(-27, 4, z, "light_blue_wall_banner[facing=east]",
-                    List.<String[]>of(new String[] {"white", "rhombus"}, new String[] {"white", "border"}));
-        }
-        plan.sign(-27, 5, -11, "spruce_wall_sign[facing=east]",
-                List.of("<au>Reisetor</au>", "<mu>Travel gate</mu>", "Hindurchgehen:", "<em>Zufalls-Teleport</em>"),
+        plan.set(-27, 1, -11, "spruce_log");
+        plan.set(-27, 2, -11, "spruce_log");
+        plan.set(-27, 3, -11, "spruce_log");
+        plan.set(-27, 4, -11, "lantern[hanging=false]");
+        plan.sign(-26, 2, -11, "spruce_wall_sign[facing=east]",
+                List.of("<au>Reisetore</au>", "<em>West</em>: Oberwelt", "<red>Nord</red>: Nether",
+                        "<light_purple>Ost</light_purple>: End"),
                 List.of());
-        gate = Box.of(-29, 1, -12, -28, 3, -10);
-        // Wegweiser vor dem Tor
-        plan.set(-24, 1, -14, "spruce_fence");
-        plan.set(-24, 2, -14, "spruce_fence");
-        plan.sign(-24, 3, -14, "spruce_sign[rotation=12]",
-                List.of("<em>Nah</em> 500–2000", "<au>Mittel</au> –5000", "<bl>Weit</bl> –9500", "<mu>/rtp</mu>"),
-                List.of("<em>Near</em> 500–2000", "<au>Middle</au> –5000", "<bl>Far</bl> –9500", "<mu>/rtp</mu>"));
+        plan.sign(-28, 2, -11, "spruce_wall_sign[facing=west]",
+                List.of("<au>Travel gates</au>", "<em>West</em>: Overworld", "<red>North</red>: Nether",
+                        "<light_purple>East</light_purple>: End"),
+                List.of());
         // Bänke und Bäume auf dem Platz
         bench(-31, -16, Dir.SOUTH);
         bench(-31, -6, Dir.NORTH);
@@ -640,10 +621,10 @@ public final class TownPlan {
                 }
             }
         }
-        gateHouse(Dir.NORTH);
-        gateHouse(Dir.SOUTH);
-        gateHouse(Dir.EAST);
-        gateHouse(Dir.WEST);
+        gateHouse(Dir.NORTH, NETHER);
+        gateHouse(Dir.SOUTH, null);
+        gateHouse(Dir.EAST, END);
+        gateHouse(Dir.WEST, OVERWORLD);
         for (int sx : new int[] {-1, 1}) {
             for (int sz : new int[] {-1, 1}) {
                 tower(sx * WALL, sz * WALL);
@@ -651,8 +632,37 @@ public final class TownPlan {
         }
     }
 
-    /** Torhaus über einer Hauptstraße: Bogen 5 breit, oben ein kleines Haus mit Dach und Banner. */
-    private void gateHouse(Dir out) {
+    /** Aussehen eines Reisetors. */
+    private record Theme(String target, String[] stones, String rim, String stairs, String floor, String crown,
+                         String banner, List<String[]> pattern, String de, String en, String colour) {
+        String stone(int x, int y, int z) {
+            int n = Plan.noise(x * 5 + y, z, 47, 10);
+            return n < 6 ? stones[0] : n < 9 ? stones[1] : stones[2];
+        }
+    }
+
+    private static final Theme OVERWORLD = new Theme("overworld",
+            new String[] {"stone_bricks", "mossy_stone_bricks", "mossy_cobblestone"}, "oak_log[axis=y]",
+            "mossy_stone_brick_stairs", "moss_block", "lantern[hanging=false]", "green_wall_banner",
+            List.<String[]>of(new String[] {"lime", "rhombus"}, new String[] {"yellow", "flower"}),
+            "Oberwelt", "Overworld", "em");
+    private static final Theme NETHER = new Theme("nether",
+            new String[] {"polished_blackstone_bricks", "cracked_polished_blackstone_bricks", "gilded_blackstone"},
+            "crying_obsidian", "polished_blackstone_brick_stairs", "crimson_nylium", "soul_lantern[hanging=false]",
+            "red_wall_banner", List.<String[]>of(new String[] {"orange", "rhombus"}, new String[] {"black", "border"}),
+            "Nether", "Nether", "red");
+    private static final Theme END = new Theme("end",
+            new String[] {"end_stone_bricks", "purpur_block", "end_stone_bricks"}, "purpur_pillar[axis=y]",
+            "purpur_stairs", "end_stone", "end_rod[facing=up]", "purple_wall_banner",
+            List.<String[]>of(new String[] {"magenta", "rhombus"}, new String[] {"black", "border"}),
+            "End", "End", "light_purple");
+
+    /**
+     * Torhaus über einer Hauptstraße: Bogen 5 breit, oben ein kleines Haus mit Dach und Banner. Mit {@code theme} ist
+     * es ein Reisetor: eigene Steine, Rahmen, Boden und Krone, die Öffnung schimmert (das Bild setzt das Plugin) und
+     * wer hindurchgeht, landet per Zufalls-Teleport in dieser Dimension.
+     */
+    private void gateHouse(Dir out, Theme theme) {
         // Ursprung: Außenkante, 4 Blöcke „links“ der Straßenmitte; u läuft 9 Blöcke die Mauer entlang, v 4 nach innen
         Frame f = new Frame(plan, out.dx * (WALL + 1) - 4 * out.left().dx, out.dz * (WALL + 1) - 4 * out.left().dz,
                 out);
@@ -667,14 +677,17 @@ public final class TownPlan {
                         f.set(u, y, v, "air");
                         continue;
                     }
-                    f.set(u, y, v, wallStone(f.x(u, v), y, f.z(u, v)));
+                    int x = f.x(u, v);
+                    int z = f.z(u, v);
+                    f.set(u, y, v, theme == null ? wallStone(x, y, z) : theme.stone(x, y, z));
                 }
             }
         }
+        String stairs = theme == null ? "stone_brick_stairs" : theme.stairs();
         // Rundbogen
         for (int v = 0; v < d; v++) {
-            f.set(2, 5, v, "stone_brick_stairs[facing=" + f.l() + ",half=top]");
-            f.set(6, 5, v, "stone_brick_stairs[facing=" + f.r() + ",half=top]");
+            f.set(2, 5, v, stairs + "[facing=" + f.l() + ",half=top]");
+            f.set(6, 5, v, stairs + "[facing=" + f.r() + ",half=top]");
             f.set(2, 0, v, "stone_bricks");
         }
         // Fenster und Zinnen
@@ -683,20 +696,51 @@ public final class TownPlan {
             f.set(u, 8, d - 1, "iron_bars");
         }
         for (int u = 0; u < w; u += 2) {
-            f.set(u, 11, 0, "stone_bricks");
-            f.set(u, 11, d - 1, "stone_bricks");
+            f.set(u, 11, 0, theme == null ? "stone_bricks" : theme.stones()[0]);
+            f.set(u, 11, d - 1, theme == null ? "stone_bricks" : theme.stones()[0]);
         }
         // Dach: flache Pyramide aus Schiefer
         for (int k = 0; k <= 2; k++) {
             f.fill(1 + k, 11 + k, 1, w - 2 - k, 11 + k, d - 2, "deepslate_tile_slab[type=bottom]");
         }
-        f.set(4, 14, 1, "lightning_rod");
-        // Banner außen und innen, Schild über dem Bogen
-        plan.banner(f.x(4, -1), 9, f.z(4, -1), "light_blue_wall_banner[facing=" + f.f() + "]", LOZENGE);
-        plan.banner(f.x(4, d), 9, f.z(4, d), "light_blue_wall_banner[facing=" + f.b() + "]", LOZENGE);
-        f.sign(4, 6, -1, "spruce", List.of("", "<au>Marktstadt</au>", "<mu>MorniSMP</mu>", ""), List.of());
-        plan.sign(f.x(4, d), 6, f.z(4, d), "spruce_wall_sign[facing=" + f.b() + "]",
-                List.of("", "<em>Wildnis</em>", "<mu>Wilderness</mu>", ""), List.of());
+        f.set(4, 14, 1, theme == null ? "lightning_rod" : theme.crown());
+        if (theme == null) {
+            plan.banner(f.x(4, -1), 9, f.z(4, -1), "light_blue_wall_banner[facing=" + f.f() + "]", LOZENGE);
+            plan.banner(f.x(4, d), 9, f.z(4, d), "light_blue_wall_banner[facing=" + f.b() + "]", LOZENGE);
+            f.sign(4, 6, -1, "spruce", List.of("", "<au>Marktstadt</au>", "<mu>MorniSMP</mu>", ""), List.of());
+            plan.sign(f.x(4, d), 6, f.z(4, d), "spruce_wall_sign[facing=" + f.b() + "]",
+                    List.of("", "<au>Aussicht</au>", "<mu>Viewpoint</mu>", ""), List.of());
+            return;
+        }
+        // Rahmen um die Öffnung (beide Seiten), Boden, Kronen neben dem Bogen
+        for (int v : new int[] {0, d - 1}) {
+            for (int y = 1; y <= 6; y++) {
+                f.set(1, y, v, theme.rim());
+                f.set(7, y, v, theme.rim());
+            }
+            for (int u = 1; u <= 7; u++) {
+                f.set(u, 6, v, theme.rim().startsWith("oak_log") ? "stripped_oak_wood" : theme.rim());
+            }
+            f.set(1, 7, v, theme.crown());
+            f.set(7, 7, v, theme.crown());
+        }
+        f.fill(2, 0, 0, 6, 0, d - 1, theme.floor());
+        plan.banner(f.x(4, -1), 9, f.z(4, -1), theme.banner() + "[facing=" + f.f() + "]", theme.pattern());
+        plan.banner(f.x(4, d), 9, f.z(4, d), theme.banner() + "[facing=" + f.b() + "]", theme.pattern());
+        String c = theme.colour();
+        plan.sign(f.x(4, d), 7, f.z(4, d), "spruce_wall_sign[facing=" + f.b() + "]",
+                List.of("<au>Reisetor</au>", "<" + c + "><b>" + theme.de() + "</b></" + c + ">", "hindurchgehen",
+                        "<mu>Zufalls-Teleport</mu>"),
+                List.of());
+        f.sign(4, 7, -1, "spruce", List.of("", "<au>Marktstadt</au>", "<mu>MorniSMP</mu>", ""), List.of());
+        // Reisetor für das Plugin
+        Box box = Box.of(f.x(2, 1), 1, f.z(2, 1), f.x(6, 2), 3, f.z(6, 2));
+        Box membrane = Box.of(f.x(2, 1), 1, f.z(2, 1), f.x(6, 1), 4, f.z(6, 1));
+        Dir in = out.opposite();
+        float yaw = (float) Math.toDegrees(Math.atan2(-in.dx, in.dz));
+        String axis = out.dx == 0 ? "x" : "z";
+        gates.add(new Layout.Gate(theme.target(), box, f.x(4, d + 2) + 0.5, f.z(4, d + 2) + 0.5, yaw, membrane,
+                axis, f.x(4, d + 1) + 0.5, 10.6, f.z(4, d + 1) + 0.5));
     }
 
     /** Weiß-blaue Raute auf hellblauem Grund. */
@@ -755,8 +799,9 @@ public final class TownPlan {
             plan.set(c[0], 1, c[1], "spruce_fence");
             plan.set(c[0], 2, c[1], "spruce_fence");
             plan.sign(c[0], 3, c[1], "spruce_sign[rotation=" + c[2] + "]",
-                    List.of("<au>Norden</au>: Auktion,", "Auftragsbrett", "<au>Osten</au>: Ankauf", "<au>Westen</au>: Reisetor"),
-                    List.of("<au>North</au>: auction,", "orders", "<au>East</au>: buy-back", "<au>West</au>: travel gate"));
+                    List.of("<au>Reisetore</au>:", "<em>W</em> Oberwelt", "<red>N</red> Nether", "<light_purple>O</light_purple> End"),
+                    List.of("<au>Travel gates</au>:", "<em>W</em> Overworld", "<red>N</red> Nether",
+                            "<light_purple>E</light_purple> End"));
         }
     }
 

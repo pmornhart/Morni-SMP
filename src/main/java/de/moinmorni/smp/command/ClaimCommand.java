@@ -81,12 +81,8 @@ public final class ClaimCommand implements Router.Handler {
         World w = l.getWorld();
         int cx = l.getBlockX() >> 4;
         int cz = l.getBlockZ() >> 4;
-        if (w.getEnvironment() == World.Environment.THE_END) {
-            s.msg.send(p, "claim.no-end");
-            return;
-        }
-        if (s.town.chunkNear(w, cx, cz, s.settings.claimTownDistance)) {
-            s.msg.send(p, "claim.too-close", Msg.t("chunks", s.settings.claimTownDistance));
+        if (s.town.isSpawnWorld(w)) {
+            s.msg.send(p, "claim.spawn-world");
             return;
         }
         Claims.ClaimResult r = s.claims.claim(w.getName(), cx, cz, p.getUniqueId(), p.getName(), s.settings.claimsFree,
@@ -107,7 +103,7 @@ public final class ClaimCommand implements Router.Handler {
             case LIMIT -> s.msg.send(p, "claim.limit", Msg.t("max", s.settings.claimsMax));
             case NOT_ENOUGH -> s.msg.send(p, "money.not-enough", s.msg.money("missing",
                     s.settings.claimPrice - s.bank.balance(p.getUniqueId()), p));
-            case FORBIDDEN -> s.msg.send(p, "claim.too-close", Msg.t("chunks", s.settings.claimTownDistance));
+            case FORBIDDEN -> s.msg.send(p, "claim.spawn-world");
         }
     }
 

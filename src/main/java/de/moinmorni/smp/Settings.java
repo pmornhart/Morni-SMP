@@ -22,6 +22,9 @@ public final class Settings {
 
     // Welt
     public final String world;
+    public final String spawnWorld;
+    public final int spawnHeight;
+    public final String gateOverworld;
     public final int borderRadius;
     public final int borderRadiusNether;
     public final int borderRadiusEnd;
@@ -51,7 +54,6 @@ public final class Settings {
     public final int claimsFree;
     public final long claimPrice;
     public final int claimsMax;
-    public final int claimTownDistance;
 
     // Ankauf
     public final List<Buyback.Offer> buyback;
@@ -78,6 +80,10 @@ public final class Settings {
         payConfirmAbove = taler(c, "waehrung.zahlen-bestaetigen-ab", 1000);
 
         world = c.getString("welt.name", "world");
+        spawnWorld = c.getString("spawnwelt.name", "smp_spawn");
+        spawnHeight = clamp(c.getInt("spawnwelt.hoehe", 90), 0, 300);
+        String og = c.getString("reisetore.oberwelt", "nah").toLowerCase(Locale.ROOT);
+        gateOverworld = og.equals("mittel") || og.equals("weit") ? og : "nah";
         borderRadius = clamp(c.getInt("welt.grenze-radius", 10_000), 500, 29_000_000);
         borderRadiusNether = clamp(c.getInt("welt.grenze-radius-nether", 1_250), 100, 29_000_000);
         borderRadiusEnd = clamp(c.getInt("welt.grenze-radius-end", 10_000), 500, 29_000_000);
@@ -115,7 +121,6 @@ public final class Settings {
         claimsFree = clamp(c.getInt("grundstuecke.gratis", 4), 0, 1000);
         claimPrice = taler(c, "grundstuecke.preis", 250);
         claimsMax = clamp(c.getInt("grundstuecke.max", 64), 1, 10_000);
-        claimTownDistance = clamp(c.getInt("grundstuecke.abstand-zur-stadt", 2), 0, 64);
 
         buyback = new ArrayList<>();
         // eigene Preisliste nur, wenn sie in der config.yml steht – sonst die mitgelieferte (Werte darin haben eigene

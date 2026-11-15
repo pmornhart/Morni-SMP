@@ -12,18 +12,31 @@ final class TextsWorld {
 
     static void register() {
         // Zufalls-Teleport
-        t("rtp.title", "Reisetor – wohin?", "Travel gate – where to?");
+        t("rtp.title", "Zufalls-Teleport – wohin?", "Random teleport – where to?");
+        t("rtp.overworld", "<green><b>Oberwelt</b></green>", "<green><b>Overworld</b></green>");
+        t("rtp.overworld.lore", "<mu>Rechts daneben: wie weit weg von 0/0?</mu>", "<mu>To the right: how far from 0/0?</mu>");
+        t("rtp.searching.overworld", "Ich suche einen sicheren Platz in der <green>Oberwelt</green> …",
+                "Looking for a safe spot in the <green>Overworld</green> …");
+        t("rtp.searching.nether", "Ich suche einen sicheren Platz im <red>Nether</red> …",
+                "Looking for a safe spot in the <red>Nether</red> …");
+        t("rtp.searching.end", "Ich suche einen sicheren Platz im <light_purple>End</light_purple> …",
+                "Looking for a safe spot in the <light_purple>End</light_purple> …");
+        t("rtp.no-world", "<red>Diese Dimension gibt es auf dem Server gerade nicht.</red>",
+                "<red>That dimension doesn't exist on this server right now.</red>");
+        t("spawn.fell", "<bl>Hoppla – zurück auf den Marktplatz.</bl>", "<bl>Whoops – back to the market square.</bl>");
+        t("claim.spawn-world", "<red>In der Spawn-Welt gibt es keine Grundstücke – geh durch ein Reisetor in die "
+                + "Wildnis.</red>", "<red>There are no claims in the spawn world – take a travel gate into the wild.</red>");
         t("rtp.nah", "<em><b>Nah</b></em>", "<em><b>Near</b></em>");
-        t("rtp.nah.lore", "<mu>Nicht weit von der Stadt – gut für den Anfang</mu>", "<mu>Not far from town – good to start</mu>");
+        t("rtp.nah.lore", "<mu>Oberwelt, nicht weit von 0/0 – gut für den Anfang</mu>", "<mu>Overworld, not far from 0/0 – good to start</mu>");
         t("rtp.mittel", "<au><b>Mittel</b></au>", "<au><b>Medium</b></au>");
         t("rtp.mittel.lore", "<mu>Mehr Platz, weniger Nachbarn</mu>", "<mu>More room, fewer neighbours</mu>");
         t("rtp.weit", "<bl><b>Weit</b></bl>", "<bl><b>Far</b></bl>");
         t("rtp.weit.lore", "<mu>Unberührte Gegend nahe am Rand der Welt</mu>", "<mu>Untouched land near the edge of the world</mu>");
         t("rtp.nether", "<red><b>Nether</b></red>", "<red><b>Nether</b></red>");
-        t("rtp.nether.lore", "<mu>Ein sicherer Platz im Nether</mu>", "<mu>A safe spot in the Nether</mu>");
+        t("rtp.nether.lore", "<mu>Sicher unter dem Dach, nie auf Lava</mu>", "<mu>Safe below the roof, never on lava</mu>");
         t("rtp.end", "<light_purple><b>End</b></light_purple>", "<light_purple><b>End</b></light_purple>");
-        t("rtp.end.lore", "<mu>Auf eine der äußeren Inseln</mu>", "<mu>To one of the outer islands</mu>");
-        t("rtp.range", "<white><min> – <max> Blöcke von der Stadt</white>", "<white><min> – <max> blocks from town</white>");
+        t("rtp.end.lore", "<mu>Äußere Inseln (sonst Hauptinsel), nie in die Leere</mu>", "<mu>Outer islands (else main island), never the void</mu>");
+        t("rtp.range", "<white><min> – <max> Blöcke von 0/0</white>", "<white><min> – <max> blocks from 0/0</white>");
         t("rtp.click", "<em>Klick: los geht's</em>", "<em>Click: let's go</em>");
         t("rtp.info", "<white>Zufalls-Teleport</white>", "<white>Random teleport</white>");
         t("rtp.ready.lore", "<em>Bereit!</em>", "<em>Ready!</em>");
@@ -31,10 +44,7 @@ final class TextsWorld {
         t("rtp.cooldown", "<red>Noch kurz warten – wieder möglich in <time>.</red>", "<red>Please wait – available again in <time>.</red>");
         t("rtp.unknown", "So geht's: <au>/rtp</au> oder <au>/rtp nah|mittel|weit</au>",
                 "Usage: <au>/rtp</au> or <au>/rtp near|medium|far</au>");
-        t("rtp.not-yet", "<red>Dorthin geht es erst, wenn du selbst schon einmal dort warst.</red>",
-                "<red>You can only go there after you've been there yourself.</red>");
         t("rtp.busy", "<red>Ich suche schon einen Platz für dich …</red>", "<red>Already looking for a spot for you …</red>");
-        t("rtp.searching", "Ich suche einen sicheren Platz …", "Looking for a safe spot …");
         t("rtp.failed", "<red>Diesmal habe ich keinen sicheren Platz gefunden – versuch es nochmal.</red>",
                 "<red>Couldn't find a safe spot this time – please try again.</red>");
         t("rtp.arrived", "Du bist bei <white><x> / <z></white>. Viel Glück! <mu>Sichere dein Zuhause mit /gs sichern "
@@ -64,9 +74,6 @@ final class TextsWorld {
                 " <au>/gs grenzen</au> <mu>– show borders for 10 seconds</mu>");
         t("claim.help.cost", "<mu>Die ersten <free> Chunks sind gratis, jeder weitere kostet <price>, höchstens <max>.</mu>",
                 "<mu>The first <free> chunks are free, each further one costs <price>, <max> at most.</mu>");
-        t("claim.no-end", "<red>Im End gibt es keine Grundstücke.</red>", "<red>There are no claims in the End.</red>");
-        t("claim.too-close", "<red>So nah an der Marktstadt geht das nicht (mindestens <chunks> Chunks Abstand).</red>",
-                "<red>Too close to the market town (keep at least <chunks> chunks away).</red>");
         t("claim.done.free", "<em>✔</em> Gesichert! Das ist dein Grundstück Nr. <count> <mu>(<free> sind gratis)</mu>.",
                 "<em>✔</em> Claimed! This is your claim no. <count> <mu>(<free> are free)</mu>.");
         t("claim.done.paid", "<em>✔</em> Gesichert für <au><price></au> – dein Grundstück Nr. <count>.",
@@ -79,8 +86,8 @@ final class TextsWorld {
         t("claim.not-yours", "<red>Das Grundstück gehört <owner>.</red>", "<red>This claim belongs to <owner>.</red>");
         t("claim.released", "Grundstück freigegeben <mu>(<shops> Läden geschlossen)</mu>.",
                 "Claim released <mu>(<shops> shops closed)</mu>.");
-        t("claim.info.town", "Hier ist die <bl>Marktstadt</bl> – sie gehört allen und ist geschützt.",
-                "This is the <bl>market town</bl> – it belongs to everyone and is protected.");
+        t("claim.info.town", "Hier ist die <bl>Spawn-Welt mit der Marktstadt</bl> – sie gehört allen und ist geschützt.",
+                "This is the <bl>spawn world with the market town</bl> – it belongs to everyone and is protected.");
         t("claim.info.free", "Chunk <white><x> / <z></white> ist frei.", "Chunk <white><x> / <z></white> is free.");
         t("claim.info.hint", "<mu>Mit <au>/gs sichern</au> gehört er dir.</mu>", "<mu><au>/gs sichern</au> makes it yours.</mu>");
         t("claim.info.owned", "Dieser Chunk gehört <white><owner></white> <mu>(Kämpfen: <pvp>)</mu>.",

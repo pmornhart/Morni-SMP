@@ -80,7 +80,7 @@ public final class AdminCommand implements Router.Handler {
         if (args.length == 2) {
             return switch (sub) {
                 case "geld" -> List.of("geben", "nehmen", "setzen");
-                case "stadt" -> List.of("neu", "info");
+                case "stadt" -> List.of("neu", "info", "tore");
                 case "stand" -> List.of("frei");
                 case "gs" -> List.of("weg");
                 default -> List.of();
@@ -138,6 +138,15 @@ public final class AdminCommand implements Router.Handler {
     }
 
     private void town(CommandSender sender, String[] args) {
+        if (args.length >= 2 && (args[1].equalsIgnoreCase("tore") || args[1].equalsIgnoreCase("gates"))) {
+            for (de.moinmorni.smp.town.Layout.Gate g : s.town.layout().gates()) {
+                s.msg.line(sender, "admin.town.gate", Msg.t("target", g.target()),
+                        Msg.t("back", fmt(g.backX()) + " " + (s.town.ground() + 1) + " " + fmt(g.backZ())),
+                        Msg.t("gate", (g.box().x1() + g.box().x2() + 1) / 2.0 + " " + (s.town.ground() + 1) + " "
+                                + (g.box().z1() + g.box().z2() + 1) / 2.0));
+            }
+            return;
+        }
         if (args.length >= 2 && args[1].equalsIgnoreCase("neu")) {
             if (plugin.rebuildTown()) {
                 s.msg.send(sender, "admin.town.rebuilding");
@@ -147,9 +156,14 @@ public final class AdminCommand implements Router.Handler {
             return;
         }
         Location sp = s.town.spawn();
-        s.msg.send(sender, "admin.town.info", Msg.t("ready", s.town.ready()), Msg.t("y", s.town.ground()),
+        s.msg.send(sender, "admin.town.info", Msg.t("world", s.town.world() == null ? "?" : s.town.world().getName()),
+                Msg.t("ready", s.town.ready()), Msg.t("y", s.town.ground()),
                 Msg.t("stalls", s.town.layout().stalls().size()),
                 Msg.t("spawn", sp == null ? "?" : sp.getBlockX() + " " + sp.getBlockY() + " " + sp.getBlockZ()));
+    }
+
+    private static String fmt(double v) {
+        return String.format(java.util.Locale.ROOT, "%.1f", v);
     }
 
     private void stall(CommandSender sender, String[] args) {

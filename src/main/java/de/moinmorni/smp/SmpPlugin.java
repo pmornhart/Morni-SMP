@@ -45,8 +45,13 @@ import de.moinmorni.smp.ui.ChatPrompt;
 import de.moinmorni.smp.ui.Confirm;
 import de.moinmorni.smp.ui.Menus;
 import de.moinmorni.smp.ui.Picker;
+import de.moinmorni.smp.world.GateDecor;
 import de.moinmorni.smp.world.Protection;
 import de.moinmorni.smp.world.TownEvents;
+import de.moinmorni.smp.world.VoidGenerator;
+import org.bukkit.Difficulty;
+import org.bukkit.GameRule;
+import org.bukkit.WorldCreator;
 import java.util.UUID;
 import java.util.function.LongSupplier;
 import java.util.logging.Level;
@@ -77,6 +82,8 @@ public final class SmpPlugin extends JavaPlugin {
     private ShopListener shopListener;
     private RandomTeleport rtp;
     private Sidebar sidebar;
+    private GateDecor gateDecor;
+    private World spawnWorld;
     private volatile boolean stopping;
 
     @Override
@@ -118,6 +125,7 @@ public final class SmpPlugin extends JavaPlugin {
         s.town = new Town(plan.layout());
         s.stalls.ensure(plan.layout().stalls().size());
         s.boards = new Boards(s.town, s.bank, s.stats, s.stalls);
+        gateDecor = new GateDecor(s.town);
         s.deliveries = new Deliveries(s.mailbox, s.msg);
         s.prompt = new ChatPrompt(this);
         s.picker = new Picker(s.msg, s.prompt);
@@ -147,11 +155,13 @@ public final class SmpPlugin extends JavaPlugin {
         pm.registerEvents(s.combat, this);
 
         commands();
+        spawnWorld = createSpawnWorld();
         worlds();
         buildTown(false);
 
         getServer().getScheduler().runTaskTimer(this, s.combat::tick, SECOND, SECOND);
         getServer().getScheduler().runTaskTimer(this, sidebar::tick, 2 * SECOND, 2 * SECOND);
+        getServer().getScheduler().runTaskTimer(this, gateDecor::particles, SECOND, SECOND / 2);
         getServer().getScheduler().runTaskTimer(this, this::everyMinute, MINUTE, MINUTE);
         getServer().getScheduler().runTaskTimer(this, this::every30s, 10 * SECOND, 30 * SECOND);
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -217,9 +227,48 @@ public final class SmpPlugin extends JavaPlugin {
         r.add(this, "smpadmin", new AdminCommand(s, this, money));
     }
 
-    /** Weltgrenzen um 0/0 (Nether kleiner, wie üblich). */
+    /**
+     * Die Spawn-Welt: leer (nur die Stadt-Insel), immer Mittag, kein Wetter, keine Monster, kein Feuer. Sie bleibt beim
+     * Neustart erhalten (Ordner {@code smp_spawn} neben der Hauptwelt).
+     */
+    @SuppressWarnings("deprecation")
+    private World createSpawnWorld() {
+        World w = Bukkit.getWorld(s.settings.spawnWorld);
+        if (w == null) {
+            w = new WorldCreator(s.settings.spawnWorld).environment(World.Environment.NORMAL)
+                    .generator(new VoidGenerator()).generateStructures(false).createWorld();
+        }
+        if (w == null) {
+            getLogger().severe("Spawn-Welt lässt sich nicht anlegen – die Marktstadt kommt in die Hauptwelt.");
+            return mainWorld();
+        }
+        w.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false);
+        w.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
+        w.setGameRule(GameRule.DO_MOB_SPAWNING, false);
+        w.setGameRule(GameRule.DO_FIRE_TICK, false);
+        w.setGameRule(GameRule.MOB_GRIEFING, false);
+        w.setGameRule(GameRule.DO_INSOMNIA, false);
+        w.setGameRule(GameRule.DO_PATROL_SPAWNING, false);
+        w.setGameRule(GameRule.DO_TRADER_SPAWNING, false);
+        w.setGameRule(GameRule.DO_WARDEN_SPAWNING, false);
+        w.setTime(6000);
+        w.setStorm(false);
+        w.setThundering(false);
+        w.setClearWeatherDuration(Integer.MAX_VALUE / 2);
+        w.setDifficulty(Difficulty.PEACEFUL);
+        w.setSpawnFlags(false, true);
+        return w;
+    }
+
+    /** Weltgrenzen um 0/0 (Nether kleiner, wie üblich; Spawn-Welt nur so groß wie die Insel). */
     private void worlds() {
         for (World w : Bukkit.getWorlds()) {
+            if (w.equals(spawnWorld)) {
+                WorldBorder b = w.getWorldBorder();
+                b.setCenter(0, 0);
+                b.setSize((s.town.layout().area() + 24) * 2.0);
+                continue;
+            }
             int radius = switch (w.getEnvironment()) {
                 case NETHER -> s.settings.borderRadiusNether;
                 case THE_END -> s.settings.borderRadiusEnd;
@@ -232,16 +281,17 @@ public final class SmpPlugin extends JavaPlugin {
         }
     }
 
-    private World mainWorld() {
+    World mainWorld() {
         World w = Bukkit.getWorld(s.settings.world);
         return w != null ? w : Bukkit.getWorlds().get(0);
     }
 
     private void buildTown(boolean force) {
         if (builder == null) {
-            builder = new TownBuilder(this, s.town, plan, s.meta);
+            builder = new TownBuilder(this, s.town, plan, s.meta,
+                    spawnWorld != null && !spawnWorld.equals(mainWorld()) ? s.settings.spawnHeight : 0);
         }
-        builder.ensure(mainWorld(), force, () -> {
+        builder.ensure(spawnWorld, force, () -> {
             // vor einem Neubau: Stände räumen (Kisten ins Abholfach), Miete läuft weiter
             for (Stalls.Stall st : s.stalls.all()) {
                 if (st.tenant() != null) {
@@ -251,6 +301,7 @@ public final class SmpPlugin extends JavaPlugin {
         }, () -> {
             s.boards.stallSigns();
             s.boards.refresh();
+            gateDecor.refresh();
             reportState();
         });
     }
