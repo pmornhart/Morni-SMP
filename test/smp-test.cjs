@@ -504,6 +504,32 @@ async function main() {
   }
   check('Kein Schaden auf friedlichem Grundstück', anna.health === hp0, `${hp0} → ${anna.health}`);
 
+  // Grundstück aufgeben → Wildnis: jetzt geht Kämpfen, beide sind „im Kampf“
+  check('/gs aufgeben', (await say(anna, '/gs aufgeben', /freigegeben/)) !== '');
+  clear(anna, bert);
+  const hp1 = anna.health;
+  const target2 = bert.players.Anna?.entity;
+  if (target2) {
+    await bert.lookAt(target2.position.offset(0, 1.4, 0), true);
+    bert.attack(target2);
+  }
+  await waitFor(() => anna.health < hp1, 3000);
+  check('In der Wildnis wirkt ein Treffer', anna.health < hp1, `${hp1} → ${anna.health}`);
+  check('Kampf-Markierung für beide', await waitFor(() => sees(anna, /im Kampf/) && sees(bert, /im Kampf/), 3000));
+  const blocked = await say(anna, '/spawn', /Im Kampf geht das nicht/);
+  check('Im Kampf kein /spawn', blocked !== '', blocked);
+
+  // Flucht im Kampf: Bert geht → stirbt, Annas Kopfgeld auf Bert (100 ₮) geht an Anna
+  const richBefore = await balance(anna);
+  clear(anna);
+  if (bert.players.Anna?.entity) bert.attack(bert.players.Anna.entity);
+  await sleep(500);
+  bert.quit();
+  await waitFor(() => sees(anna, /geflüchtet/) && sees(anna, /Kopfgeld kassiert/), 5000);
+  check('Flucht im Kampf wird gemeldet', sees(anna, /Bert ist mitten im Kampf geflüchtet/), last(anna, /geflüchtet/));
+  check('Kopfgeld (100 ₮) geht an Anna', sees(anna, /Anna hat Bert besiegt und 100 ₮ Kopfgeld kassiert/) &&
+    (await balance(anna)) === richBefore + 100, last(anna, /Kopfgeld/));
+
   // ------------------------------------------------------------------ Statistik/Admin
   const adm = await cmd('smpadmin info');
   check('/smpadmin info (Konsole)', /Geld bei Spielern/.test(adm.join(' ')), adm.join(' ').slice(0, 160));
@@ -533,7 +559,6 @@ async function main() {
   }
 
   anna.quit();
-  bert.quit();
   await sleep(1000);
   const ok = results.filter((r) => r.ok).length;
   console.log(`\n${ok}/${results.length} Prüfungen bestanden`);
