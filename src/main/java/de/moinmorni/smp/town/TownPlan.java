@@ -15,7 +15,7 @@ import java.util.Map;
  * <pre>
  *   |c| ≤ 17   Marktplatz: Brunnen mit Bestenliste, 16 Marktstände (4 je Seite), Pflaster in weiß-blauen Rauten
  *   18…20      Ring um den Platz, von dort Gassen bis zur Mauer
- *   21…40      Häuserblöcke: Auktionshaus + Kontor mit Auftragsbrett (Nord), Ankauf + Abholfach (Ost),
+ *   21…40      Häuserblöcke: Auktionshaus + Kontor mit Auftragsbrett (Nord), Händlerhaus + Abholfach (Ost),
  *              Wegweiser-Platz + Gasthaus (West), Bürgerhäuser (Süd und in den vier Ecken), Gärten mit Bäumen
  *   41…44      Wallgasse innen an der Mauer
  *   45…46      Stadtmauer mit Zinnen, runde Ecktürme; drei Tore sind Reisetore (West: Oberwelt, Nord: Nether,
@@ -28,7 +28,7 @@ import java.util.Map;
 public final class TownPlan {
 
     /** Bau-Fassung: wird sie erhöht, baut sich die Stadt beim nächsten Start neu (Stände werden vorher geräumt). */
-    public static final int VERSION = 5;
+    public static final int VERSION = 6;
 
     public static final int AREA = 58;
     public static final int FLAT = 51;
@@ -39,6 +39,8 @@ public final class TownPlan {
     private final List<StallSpot> stalls = new ArrayList<>();
     private final Map<Long, String> triggers = new HashMap<>();
     private final List<Layout.Gate> gates = new ArrayList<>();
+    private Layout.Spot merchant = new Layout.Spot(0.5, 1, 0.5, 0f);
+    private final List<Layout.Spot> showcase = new ArrayList<>();
 
     private TownPlan() {
     }
@@ -61,7 +63,7 @@ public final class TownPlan {
         t.signposts();
         Connect.run(t.plan);
         Layout layout = new Layout(0.5, 1, 10.5, 180f, AREA, FLAT, List.copyOf(t.stalls), Map.copyOf(t.triggers),
-                List.copyOf(t.gates), 0.5, 10.3, 0.5);
+                List.copyOf(t.gates), 0.5, 10.3, 0.5, t.merchant, List.copyOf(t.showcase));
         return new Result(t.plan, layout);
     }
 
@@ -299,8 +301,8 @@ public final class TownPlan {
         Houses.build(kontor, 13, 11, Houses.STYLES.get(1), true, 2);
         orderBoard(kontor);
 
-        // Osten: Ankauf (Nord) und Abholfach (Süd), Front nach Westen
-        buybackHall(new Frame(plan, 21, -17, Dir.WEST));
+        // Osten: Händlerhaus mit Ankauf (Nord) und Abholfach (Süd), Front nach Westen
+        merchantHall(new Frame(plan, 21, -17, Dir.WEST));
         Frame post = new Frame(plan, 21, 7, Dir.WEST);
         Houses.build(post, 9, 9, Houses.STYLES.get(3), true, 3);
         mailInterior(post);
@@ -407,11 +409,18 @@ public final class TownPlan {
         trigger(f, 6, 1, 6, "orders");
     }
 
-    /** Offene Markthalle für den Ankauf: Dach auf Pfosten, Heuballen, Kürbisse, Tresen. */
-    private void buybackHall(Frame f) {
+    /**
+     * Das Händlerhaus: offene Markthalle (Dach auf Pfosten) mit langem Tresen, dahinter die Händlerin (eine Figur, die
+     * das Plugin hinstellt) und Regale voller Ware; über dem Tresen drehen sich Schaustücke. Rechtsklick auf Tresen,
+     * Schilder oder die Händlerin öffnet {@code /shop}.
+     */
+    private void merchantHall(Frame f) {
         int w = 13;
         int d = 11;
         f.fill(0, 0, 0, w - 1, 0, d - 1, "stone_bricks");
+        f.fill(1, 0, 1, w - 2, 0, d - 2, "spruce_planks");
+        f.fill(6, 0, 0, 6, 0, 2, "polished_andesite");
+        f.fill(6, 1, 0, 6, 1, 2, "green_carpet");
         for (int u = 0; u < w; u += 4) {
             for (int v : new int[] {0, d - 1}) {
                 f.fill(Math.min(u, w - 1), 1, v, Math.min(u, w - 1), 4, v, "stripped_spruce_log[axis=y]");
@@ -421,7 +430,7 @@ public final class TownPlan {
         f.fill(0, 5, d - 1, w - 1, 5, d - 1, "spruce_log[axis=" + f.axisU() + "]");
         f.fill(0, 5, 1, 0, 5, d - 2, "spruce_log[axis=" + f.axisV() + "]");
         f.fill(w - 1, 5, 1, w - 1, 5, d - 2, "spruce_log[axis=" + f.axisV() + "]");
-        // Satteldach quer (First entlang u)
+        // Satteldach quer (First entlang u), Giebel mit Fachwerk
         for (int k = 0; k <= 6; k++) {
             int vf = -1 + k;
             int vb = d - k;
@@ -433,46 +442,90 @@ public final class TownPlan {
                 f.fill(-1, y, vf, w, y, vf, "spruce_slab[type=bottom]");
                 break;
             }
-            f.fill(-1, y, vf, w, y, vf, "spruce_stairs[facing=" + f.b() + ",half=bottom]");
-            f.fill(-1, y, vb, w, y, vb, "spruce_stairs[facing=" + f.f() + ",half=bottom]");
+            f.fill(-1, y, vf, w, y, vf, "dark_oak_stairs[facing=" + f.b() + ",half=bottom]");
+            f.fill(-1, y, vb, w, y, vb, "dark_oak_stairs[facing=" + f.f() + ",half=bottom]");
             if (vb - vf > 1) {
-                f.fill(0, y, vf + 1, 0, y, vb - 1, "spruce_planks");
-                f.fill(w - 1, y, vf + 1, w - 1, y, vb - 1, "spruce_planks");
+                f.fill(0, y, vf + 1, 0, y, vb - 1, "white_terracotta");
+                f.fill(w - 1, y, vf + 1, w - 1, y, vb - 1, "white_terracotta");
             }
         }
-        // Tresen vorne mit Schild, dahinter Ware
-        f.fill(3, 1, 3, 9, 1, 3, "spruce_planks");
-        f.fill(3, 2, 3, 9, 2, 3, "spruce_slab[type=bottom]");
-        f.set(6, 1, 3, "composter");
-        for (int u = 2; u <= 10; u++) {
-            String b = switch (u % 5) {
-                case 0 -> "hay_block[axis=y]";
-                case 1 -> "pumpkin";
-                case 2 -> "melon";
-                case 3 -> "barrel[facing=up]";
-                default -> "hay_block[axis=" + f.axisU() + "]";
+        // Rückwand mit Regalen: Fässer, Bücher, Kisten – darüber Ware
+        f.fill(1, 1, d - 1, w - 2, 4, d - 1, "spruce_planks");
+        for (int u = 1; u <= w - 2; u++) {
+            String low = switch (u % 4) {
+                case 0 -> "barrel[facing=" + f.f() + "]";
+                case 1 -> "chiseled_bookshelf[facing=" + f.f() + "]";
+                case 2 -> "chest[facing=" + f.f() + "]";
+                default -> "barrel[facing=up]";
             };
-            f.set(u, 1, 8, b);
-            if (u % 2 == 0) {
-                f.set(u, 2, 8, "hay_block[axis=y]");
-            }
+            f.set(u, 1, d - 2, low);
+            f.set(u, 2, d - 2, u % 2 == 0 ? "spruce_slab[type=bottom]" : "barrel[facing=" + f.f() + "]");
+            String ware = switch (u % 6) {
+                case 0 -> "melon";
+                case 1 -> "pumpkin";
+                case 2 -> "hay_block[axis=y]";
+                case 3 -> "oak_log[axis=y]";
+                case 4 -> "bookshelf";
+                default -> "honeycomb_block";
+            };
+            f.set(u, 3, d - 2, ware);
         }
-        f.set(1, 1, 5, "cauldron");
-        f.set(11, 1, 5, "barrel[facing=up]");
+        // Seiten: Fässer und Kisten mit Ware, links Braustand, rechts Amboss
+        for (int v = 4; v <= 7; v++) {
+            f.set(1, 1, v, v % 2 == 0 ? "barrel[facing=up]" : "hay_block[axis=y]");
+            f.set(w - 2, 1, v, v % 2 == 0 ? "barrel[facing=up]" : "pumpkin");
+        }
+        f.set(1, 2, 4, "brewing_stand");
+        f.set(1, 2, 6, "decorated_pot");
+        f.set(w - 2, 2, 4, "anvil[facing=" + f.r() + "]");
+        f.set(w - 2, 2, 6, "decorated_pot");
+        // Tresen vorne: ein Block hoch (die Händlerin ist gut zu sehen), an den Enden Fässer mit Kerzen, neben der Händlerin
+        // eine Glocke
+        f.fill(3, 1, 3, 9, 1, 3, "stripped_spruce_wood[axis=y]");
+        f.set(3, 1, 3, "barrel[facing=" + f.f() + "]");
+        f.set(9, 1, 3, "barrel[facing=" + f.f() + "]");
+        f.set(3, 2, 3, "green_candle[candles=3,lit=true]");
+        f.set(9, 2, 3, "green_candle[candles=3,lit=true]");
+        f.set(7, 2, 3, "bell[attachment=floor,facing=" + f.r() + "]");
+        f.fill(2, 1, 4, 2, 1, 7, "spruce_fence");
+        f.fill(10, 1, 4, 10, 1, 7, "spruce_fence");
+        // Licht: Laternen am First, Kerzen am Tresen
         f.set(4, 4, 5, "lantern[hanging=true]");
         f.set(8, 4, 5, "lantern[hanging=true]");
+        f.set(6, 4, 7, "lantern[hanging=true]");
+        f.set(4, 4, 2, "lantern[hanging=true]");
+        f.set(8, 4, 2, "lantern[hanging=true]");
+        // Grüne Banner an den Frontpfosten (Farbe des Händlerhauses)
+        f.set(0, 4, -1, "green_wall_banner[facing=" + f.f() + "]");
+        f.set(12, 4, -1, "green_wall_banner[facing=" + f.f() + "]");
         for (int u = 3; u <= 9; u++) {
-            trigger(f, u, 1, 3, "buyback");
-            trigger(f, u, 2, 3, "buyback");
+            trigger(f, u, 1, 3, "shop");
+            trigger(f, u, 2, 3, "shop");
         }
-        f.sign(5, 1, 2, "spruce", List.of("<au>Ankauf</au>", "<mu>Buy-back</mu>", "Feldfrüchte und", "Monster-Beute"),
+        f.sign(4, 1, 2, "spruce", List.of("<au>Händlerhaus</au>", "<mu>Merchant</mu>", "Kaufen &", "Verkaufen"),
                 List.of());
-        f.sign(7, 1, 2, "spruce", List.of("<au>Ankauf</au>", "<mu>Buy-back</mu>", "crops and", "mob drops"),
+        f.sign(8, 1, 2, "spruce", List.of("<au>Merchant</au>", "<mu>Händlerhaus</mu>", "buy &", "sell"),
                 List.of());
-        trigger(f, 5, 1, 2, "buyback");
-        trigger(f, 7, 1, 2, "buyback");
-        f.sign(6, 5, -1, "spruce", List.of("", "<au>Ankauf</au>", "<mu>/verkaufen</mu>", ""), List.of());
-        trigger(f, 6, 5, -1, "buyback");
+        f.sign(5, 1, 2, "spruce", List.of("Rechtsklick", "<mu>right-click</mu>", "", "<au>/shop</au>"), List.of());
+        f.sign(7, 1, 2, "spruce", List.of("Ankauf", "<mu>buy-back</mu>", "", "<au>/verkaufen</au>"), List.of());
+        for (int u = 4; u <= 8; u++) {
+            trigger(f, u, 1, 2, "shop");
+        }
+        f.sign(6, 5, -1, "spruce", List.of("", "<au>Händlerhaus</au>", "<mu>/shop</mu>", ""), List.of());
+        trigger(f, 6, 5, -1, "shop");
+        merchant = new Layout.Spot(f.x(6, 4) + 0.5, 1, f.z(6, 4) + 0.5, yaw(f.front));
+        showcase.add(new Layout.Spot(f.x(4, 3) + 0.5, 2.6, f.z(4, 3) + 0.5, yaw(f.front)));
+        showcase.add(new Layout.Spot(f.x(8, 3) + 0.5, 2.6, f.z(8, 3) + 0.5, yaw(f.front)));
+    }
+
+    /** Blickrichtung (Minecraft-Yaw) in Richtung {@code d}. */
+    private static float yaw(Dir d) {
+        return switch (d) {
+            case SOUTH -> 0f;
+            case WEST -> 90f;
+            case NORTH -> 180f;
+            case EAST -> -90f;
+        };
     }
 
     private void mailInterior(Frame f) {

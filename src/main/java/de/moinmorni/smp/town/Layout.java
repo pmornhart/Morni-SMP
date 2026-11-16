@@ -13,12 +13,18 @@ public record Layout(
         /* geschützte Fläche (Chebyshev-Abstand) und flaches Plateau */
         int area, int flat,
         List<StallSpot> stalls,
-        /* Block → was ein Rechtsklick öffnet: „ah“, „orders“, „buyback“, „mail“, „stall“ */
+        /* Block → was ein Rechtsklick öffnet: „ah“, „orders“, „shop“, „mail“, „stall“ */
         Map<Long, String> triggers,
         /* die drei Reisetore (Oberwelt, Nether, End) */
         List<Gate> gates,
         /* Bestenliste (Mitte unten der Schrift) */
-        double boardX, double boardY, double boardZ) {
+        double boardX, double boardY, double boardZ,
+        /* Händlerin im Händlerhaus (Füße, Blickrichtung) und Schaustücke über dem Tresen */
+        Spot merchant, List<Spot> showcase) {
+
+    /** Ein Punkt mit Blickrichtung (Füße bzw. Mitte, relativ zur Stadtmitte, y ab der Bodenschicht). */
+    public record Spot(double x, double y, double z, float yaw) {
+    }
 
     /** Kasten mit Ecken (einschließlich). */
     public record Box(int x1, int y1, int z1, int x2, int y2, int z2) {

@@ -189,6 +189,16 @@ final class Schema {
               target_name TEXT NOT NULL,
               amount INTEGER NOT NULL CHECK (amount > 0),
               updated INTEGER NOT NULL);
+            """,
+            // 2: Händlerhaus – wie viel jeder heute schon gekauft hat (für Tagesgrenzen einzelner Waren)
+            """
+            CREATE TABLE shop_daily(
+              uuid TEXT NOT NULL,
+              day TEXT NOT NULL,
+              item_key TEXT NOT NULL,
+              bought INTEGER NOT NULL CHECK (bought >= 0),
+              PRIMARY KEY (uuid, day, item_key));
+            CREATE INDEX ledger_reason ON ledger(reason, time);
             """);
 
     static void migrate(Database db) {

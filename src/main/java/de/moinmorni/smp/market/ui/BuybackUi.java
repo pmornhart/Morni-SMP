@@ -16,7 +16,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 /**
- * Ankauf der Stadt: Gegenstände in die oberen fünf Reihen legen, unten steht sofort, was es dafür gibt (mit dem
+ * Ankauf des Händlerhauses: Gegenstände in die oberen fünf Reihen legen, unten steht sofort, was es dafür gibt (mit dem
  * sinkenden Tagespreis). „Verkaufen“ nimmt nur, was die Stadt kauft; alles andere bleibt liegen und kommt beim
  * Schließen zurück ins Inventar.
  */
@@ -41,8 +41,8 @@ public final class BuybackUi {
         for (int i = 45; i < 54; i++) {
             m.show(i, Items.filler(Material.GRAY_STAINED_GLASS_PANE));
         }
-        m.set(45, Items.button(Material.BOOK, s.msg.text(lang, "buyback.prices"), priceLines(p, lang)),
-                pl -> showPrices(pl));
+        m.set(45, Items.button(Material.EMERALD, s.msg.text(lang, "buyback.prices"),
+                List.of(s.msg.text(lang, "buyback.prices.lore"))), pl -> s.plugin.shopUi().main(pl));
         Runnable redraw = () -> m.set(49, totalButton(p, m, lang), pl -> sell(pl, m));
         m.onChange(redraw);
         redraw.run();
@@ -127,27 +127,6 @@ public final class BuybackUi {
         }
         if (any) {
             s.msg.send(p, "buyback.returned");
-        }
-    }
-
-    private List<Component> priceLines(Player p, String lang) {
-        Map<String, Long> sold = s.buyback.soldToday(p.getUniqueId(), s.today());
-        List<Component> lore = new ArrayList<>();
-        for (Buyback.Offer o : s.buyback.offers().values()) {
-            long already = sold.getOrDefault(o.key(), 0L);
-            long full = Math.max(0, o.daily() - already);
-            lore.add(s.msg.text(lang, "buyback.price-line", Msg.c("item", NoticeSender.itemName(o.key())),
-                    Msg.money("unit", o.unitPrice(), lang), Msg.t("full", full)));
-        }
-        lore.add(Component.empty());
-        lore.add(s.msg.text(lang, "buyback.tiers"));
-        return lore;
-    }
-
-    private void showPrices(Player p) {
-        String lang = s.msg.lang(p);
-        for (Component c : priceLines(p, lang)) {
-            p.sendMessage(c);
         }
     }
 }

@@ -138,7 +138,7 @@ public final class MiscCommands {
             @Override
             public void run(CommandSender sender, String[] args) {
                 s.msg.send(sender, "help.title");
-                for (String k : new String[] {"money", "market", "orders", "buyback", "stall", "shop", "claims",
+                for (String k : new String[] {"money", "haendler", "market", "orders", "buyback", "stall", "shop", "claims",
                         "travel", "homes", "tpa", "bounty", "reward", "sidebar"}) {
                     s.msg.line(sender, "help." + k);
                 }

@@ -125,6 +125,22 @@ public final class Buyback {
         return new Quote(total, lines);
     }
 
+    /** Bezug fürs Kassenbuch: „minecraft:wheat×64,minecraft:bone×12“ (höchstens 500 Zeichen). */
+    static String ref(Quote q) {
+        StringBuilder sb = new StringBuilder();
+        for (Line l : q.lines()) {
+            String part = l.key() + "×" + l.amount();
+            if (sb.length() + part.length() + 1 > 500) {
+                break;
+            }
+            if (sb.length() > 0) {
+                sb.append(',');
+            }
+            sb.append(part);
+        }
+        return sb.isEmpty() ? null : sb.toString();
+    }
+
     /** Verkaufen: Zähler hoch, Geld vom Server. Die Gegenstände muss das Plugin vorher schon abgenommen haben. */
     public Quote sell(UUID who, Map<String, Integer> items, String day) {
         return db.tx(c -> {
@@ -135,7 +151,7 @@ public final class Buyback {
                         who, day, l.key(), l.amount());
             }
             if (q.total() > 0) {
-                bank.move(c, Bank.SERVER, who.toString(), q.total(), "ankauf", null);
+                bank.move(c, Bank.SERVER, who.toString(), q.total(), "ankauf", ref(q));
             }
             Database.update(c, "DELETE FROM buyback_daily WHERE day < ?", day);
             return q;

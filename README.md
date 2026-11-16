@@ -19,7 +19,8 @@ allein auf einem normalen Paper-Server.
 | Auktionshaus | `/ah`, `/ah verkaufen <preis>`, `/ah suche <text>`, `/ah meine` | Abteilungen, Suche (deutsch/englisch), Sortierung, Marktpreis (Median der letzten Verkäufe), 2 % Gebühr, 48 Std., danach ins Abholfach. |
 | Abholfach | `/abholen` | Gekauftes, Abgelaufenes, Lieferungen – nichts geht verloren, wenn das Inventar voll ist. |
 | Aufträge | `/auftraege`, `/auftraege neu <menge> <preis>` | Kaufaufträge: Geld liegt in der Treuhand, Lieferanten bekommen es Stück für Stück (auch teilweise). |
-| Ankauf | `/verkaufen` | Die Stadt kauft Ernte und Mob-Beute; wer mehr als die Tagesmenge bringt, bekommt weniger pro Stück. |
+| Händlerhaus | `/shop [abteilung \| suche <text> \| verkaufen]` | Server-Shop am Marktplatz mit Händlerin Vroni: 257 Waren in zehn Abteilungen (Baublöcke, Holz & Pflanzen, Erze & Edelsteine, Farben & Deko, Essen & Ernte, Werkzeug & Waffen, Tränke & Zauber, Redstone & Technik, Mob-Beute, Besonderes & Saison), Suche deutsch/englisch, Kauf- und Ankaufspreis im Tooltip. Kaufen 1 … 64, Stapel, „so viel wie passt“, eigene Menge; verkaufen bis „alle“, ganzes Inventar mit Übersicht; Nachfrage ab 250 ₮; Tagesgrenzen und Saison-Waren. |
+| Ankauf | `/verkaufen` | Teil des Händlerhauses: Sachen hineinlegen und verkaufen. Volle Preise bis zur Tagesmenge, danach weniger pro Stück. |
 | Ladenkisten | Schild `[Laden]` an einer Kiste | Auf dem eigenen Grundstück oder am gemieteten Stand: verkaufen oder ankaufen, Menge und Preis im Menü. |
 | Marktstände | `/stand [mieten\|verlaengern\|kuendigen]` | 16 Stände am Marktplatz, Wochenmiete, Hinweis vor Ablauf, danach geräumt (Sachen ins Abholfach). |
 | Grundstücke | `/gs [sichern\|aufgeben\|info\|liste\|vertrauen\|misstrauen\|pvp\|grenzen]` | Ganze Chunks in Oberwelt, Nether und End (nicht in der Spawn-Welt), die ersten 4 gratis, Vertraute, PvP pro Chunk, Schutz gegen Bauen, Kisten, Fluten, Feuer, Explosionen. |
@@ -28,7 +29,7 @@ allein auf einem normalen Paper-Server.
 | Kopfgeld | `/kopfgeld [spieler betrag]` | Geld liegt in der Treuhand, wer das Ziel besiegt, bekommt alles. |
 | Belohnung | `/belohnung` | Einmal am Tag (nach 15 Min. Spielzeit), Serie bis 7 Tage. |
 | Anzeige | `/leiste`, `/smp` | Leiste rechts (Geld, Ort, Kampf, Abholfach), Hilfe. |
-| Team | `/smpadmin [geld\|bau\|stadt\|neuladen\|stand\|gs\|info]` | Recht `morni.smp.admin` (oder OP). |
+| Team | `/smpadmin [geld\|bau\|stadt\|neuladen\|stand\|gs\|info\|shop]` | Recht `morni.smp.admin` (oder OP). |
 
 Alle Menüs sind Truhen-Menüs mit einfachen Klicks – das geht auch für Bedrock-Spieler (über Geyser).
 
@@ -36,10 +37,22 @@ Alle Menüs sind Truhen-Menüs mit einfachen Klicks – das geht auch für Bedro
 
 `plugins/MorniSMP/config.yml` (mit Erklärungen): Währung und Startguthaben, Spawn-Welt (Name, Höhe der Insel),
 Ring des Reisetors zur Oberwelt, Weltgrenzen, Kampf-Sekunden,
-Teleport-Wartezeit, Ringe des Zufalls-Teleports, Gebühren, Laufzeiten, Miete, Grundstückspreise, Ankaufspreise und
--stufen, Belohnung, Kopfgeld. Nach Änderungen `/smpadmin neuladen`. Fehlende Schlüssel kommen aus der mitgelieferten
+Teleport-Wartezeit, Ringe des Zufalls-Teleports, Gebühren, Laufzeiten, Miete, Grundstückspreise, Ankaufsstufen,
+Belohnung, Kopfgeld und das ganze Händlerhaus (`haendler.*`: an/aus, Abteilungen, Waren mit `kauf`,
+`verkauf`, `tag`, `kauf-tag`, `monate`, Nachfrage-Grenze, `verkauf-max-prozent`). Nach Änderungen `/smpadmin neuladen`. Fehlende Schlüssel kommen aus der mitgelieferten
 Datei. Die Daten (Konten, Kassenbuch, Angebote, Aufträge, Grundstücke …) liegen in `plugins/MorniSMP/mornismp.db`
 (SQLite).
+
+## Händlerhaus und freier Markt
+
+Die Händlerin ist Obergrenze und Untergrenze zugleich: Sie verkauft teuer (wer es billiger will, kauft bei Spielern im
+Auktionshaus, an Ladenkisten oder per Auftrag) und kauft billig an – höchstens 40 % ihres Verkaufspreises
+(`haendler.verkauf-max-prozent`), immer echt weniger, als sie verlangt. Volle Ankaufspreise gibt es pro Spieler und Tag
+nur bis zur Tagesmenge der Ware, danach die Stufen aus `ankauf.stufen`. Gepresste Blöcke (Eisenblock, Heuballen …)
+kauft sie nicht an, damit niemand die Tagesmengen umgeht. Die Tests prüfen, dass Kaufen und gleich wieder Verkaufen –
+auch über Werkbank oder Ofen – nie Gewinn bringt und dass gleichzeitige Käufe nie mehr Geld abbuchen, als da ist.
+Jeder Kauf steht im Kassenbuch als `shop`, jeder Verkauf als `ankauf` (mit Sorte × Menge); `/smpadmin shop` zeigt den
+Umsatz des Tages.
 
 ## Netzwerk
 
@@ -64,7 +77,7 @@ Jeder Push baut die Jar (GitHub Actions); ein Push auf `main` mit neuer Version 
 
 `test/run.sh` baut das Plugin und einen Test-Ersatz des Netzwerks (`test/fake-network`), richtet einen Paper-26.1.2-
 Server ein (offline, Port 25740, RCON 25840, normale Welt, ViaVersion/ViaBackwards), wartet, bis die Marktstadt steht,
-und schickt zwei Test-Spieler (mineflayer) durch Spawn-Welt, alle drei Reisetore, `/rtp nether` und `/rtp end`, Stadt, Geld, Auktionshaus, Aufträge, Ankauf, Marktstand, Ladenkiste,
+und schickt zwei Test-Spieler (mineflayer) durch Spawn-Welt, alle drei Reisetore, `/rtp nether` und `/rtp end`, Stadt, Händlerin, Geld, Auktionshaus, Aufträge, Ankauf, Händlerhaus (`/shop`), Marktstand, Ladenkiste,
 Kopfgeld, Belohnung, Schutz, Zufalls-Teleport, Grundstück, Zuhause, Kampf und Netzwerk-Statistik.
 
 ```

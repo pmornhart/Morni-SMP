@@ -1,6 +1,8 @@
 package de.moinmorni.smp.command;
 
 import de.moinmorni.smp.Smp;
+import de.moinmorni.smp.market.ui.NoticeSender;
+import de.moinmorni.smp.shop.ServerShop;
 import de.moinmorni.smp.SmpPlugin;
 import de.moinmorni.smp.claims.Claims;
 import de.moinmorni.smp.economy.Bank;
@@ -20,7 +22,7 @@ import org.bukkit.entity.Player;
  */
 public final class AdminCommand implements Router.Handler {
 
-    private static final List<String> SUBS = List.of("geld", "bau", "stadt", "neuladen", "stand", "gs", "info");
+    private static final List<String> SUBS = List.of("geld", "bau", "stadt", "neuladen", "stand", "gs", "info", "shop");
 
     private final Smp s;
     private final SmpPlugin plugin;
@@ -59,9 +61,10 @@ public final class AdminCommand implements Router.Handler {
             case "stand", "stall" -> stall(sender, args);
             case "gs", "claim" -> claim(sender);
             case "info" -> info(sender);
+            case "shop", "haendler" -> shop(sender);
             default -> {
                 s.msg.send(sender, "admin.help.title");
-                for (String k : new String[] {"geld", "bau", "stadt", "neuladen", "stand", "gs", "info"}) {
+                for (String k : new String[] {"geld", "bau", "stadt", "neuladen", "stand", "gs", "info", "shop"}) {
                     s.msg.line(sender, "admin.help." + k);
                 }
             }
@@ -203,6 +206,19 @@ public final class AdminCommand implements Router.Handler {
         s.claims.unclaim(c.world(), c.cx(), c.cz(), p.getUniqueId(), true);
         int shops = plugin.shopListener().removeInChunk(c.world(), c.cx(), c.cz());
         s.msg.send(p, "admin.claim.removed", Msg.t("owner", c.ownerName()), Msg.t("shops", shops));
+    }
+
+    /** Umsatz des Händlerhauses seit Mitternacht (Zeitzone des Servers) und die meistgehandelten Waren. */
+    private void shop(CommandSender sender) {
+        long since = s.now().toLocalDate().atStartOfDay(s.settings.zone).toInstant().toEpochMilli();
+        ServerShop.Turnover t = s.shop.turnover(since);
+        s.msg.send(sender, "admin.shop", s.msg.money("income", t.income(), sender), Msg.t("buys", t.purchases()),
+                s.msg.money("payout", t.payout(), sender), Msg.t("sells", t.sales()),
+                Msg.t("wares", s.shop.catalog().size()));
+        for (ServerShop.Top top : t.top()) {
+            s.msg.line(sender, "admin.shop.top", Msg.c("item", NoticeSender.itemName(top.key())),
+                    Msg.t("bought", top.bought()), Msg.t("sold", top.sold()));
+        }
     }
 
     private void info(CommandSender sender) {

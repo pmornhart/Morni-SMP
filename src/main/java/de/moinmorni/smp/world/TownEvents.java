@@ -65,7 +65,7 @@ public final class TownEvents implements Listener {
         switch (what) {
             case "ah" -> plugin.auctionUi().command(p, new String[0]);
             case "orders" -> plugin.orderUi().command(p, new String[0]);
-            case "buyback" -> plugin.buybackUi().open(p);
+            case "shop", "buyback" -> plugin.shopUi().main(p);
             case "mail" -> plugin.mailboxUi().open(p, 0);
             default -> {
                 if (what.startsWith("stall:")) {
