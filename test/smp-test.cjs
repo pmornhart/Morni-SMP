@@ -20,6 +20,8 @@ const PASS = fs.readFileSync(PASS_FILE, 'utf8').trim();
 const VERSION = process.env.MC_VERSION ?? '26.1';
 
 const results = [];
+/** Ausgelasteter Rechner: alle Wartezeiten mal LANGSAM (z. B. LANGSAM=3). */
+const SLOW = Math.max(1, Number(process.env.LANGSAM) || 1);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function check(name, ok, detail = '') {
   results.push({ name, ok: Boolean(ok) });
@@ -80,6 +82,7 @@ async function serverHas(pos, name, dim = 'minecraft:overworld') {
 }
 
 async function waitFor(cond, ms = 5000, step = 100) {
+  ms *= SLOW;
   const start = Date.now();
   while (Date.now() - start < ms) {
     if (await cond()) return true;
@@ -104,7 +107,7 @@ async function join(name) {
   bot.on('error', (e) => console.log(`  (${name}: ${e.message})`));
   await new Promise((resolve, reject) => {
     bot.once('spawn', resolve);
-    setTimeout(() => reject(new Error(`${name}: kein Spawn`)), 30000);
+    setTimeout(() => reject(new Error(`${name}: kein Spawn`)), 30000 * SLOW);
   });
   await sleep(2500);
   return bot;
@@ -133,6 +136,7 @@ async function balance(bot) {
 }
 
 function nextWindow(bot, ms = 5000) {
+  ms *= SLOW;
   return new Promise((resolve) => {
     const t = setTimeout(() => resolve(null), ms);
     bot.once('windowOpen', (w) => {
@@ -230,6 +234,8 @@ async function main() {
   const logText = fs.readFileSync(path.join(SERVER, 'console.log'), 'utf8');
   check('Sortiment geladen, keine unbekannten Sorten', /Händlerhaus: 2\d\d Waren in 10 Abteilungen/.test(logText)
     && !/Händlerhaus: Unbekannte Sorte/.test(logText), (/Händlerhaus: [^\n]*/.exec(logText) ?? [''])[0]);
+  check('Schleifen-Wächter: mitgelieferte Preise ohne Geld-Schleife', !/Geld-Schleife/.test(logText),
+    (/Händlerhaus: Ankaufspreis[^\n]*/.exec(logText) ?? [''])[0]);
   const npc = Object.values(anna.entities).find((e) => e.name === 'villager');
   if (npc) {
     await cmd(`execute in minecraft:smp_spawn run tp Anna ${npc.position.x - 3} ${npc.position.y} ${npc.position.z}`);
@@ -472,7 +478,8 @@ async function main() {
   await sleep(800);
   check('Fackel (kauft die Händlerin nicht an) kommt zurück', count(anna, 'torch') === 1, String(count(anna, 'torch')));
   check('Anna hat 2327 ₮', (await balance(anna)) === 2327);
-  await cmd('give Anna wheat 300');
+  // Die Börse hat den Weizen-Kurs eben etwas gedrückt – für die genaue Rechnung zurück auf den Grundpreis
+  await cmd('smpadmin boerse zuruecksetzen', 'give Anna wheat 300');
   await sleep(800);
   const bw2 = await openBy(anna, '/verkaufen');
   for (const it of bw2 ? bw2.items().filter((i) => i.name === 'wheat' && i.slot >= bw2.inventoryStart) : []) {
@@ -786,15 +793,17 @@ async function main() {
   check('/shop erze öffnet „Erze & Edelsteine“', /Erze/.test(title(ew)), title(ew));
   const dw2 = await clickOpen(dora, slotOf(ew, 'diamond'));
   clear(dora);
-  await click(dora, 13); // 16 Diamanten = 1.280 ₮
+  check('Diamant 40-mal so teuer: Kaufen 3.200 ₮, Vroni zahlt 800 ₮', /Kaufen: 3\.200 ₮.*Verkaufen: 800 ₮/
+    .test(itemText(dw2?.slots[4])), itemText(dw2?.slots[4]).slice(0, 160));
+  await click(dora, 13); // 16 Diamanten = 51.200 ₮
   await waitFor(() => sees(dora, /reicht dein Geld nicht/), 3000);
-  check('Zu wenig Geld: klare Meldung mit Fehlbetrag', sees(dora, /dir fehlen 318,40 ₮/),
+  check('Zu wenig Geld: klare Meldung mit Fehlbetrag', sees(dora, /dir fehlen 50\.238,40 ₮/),
     `${title(dw2)} | ${itemText(dw2?.slots[13]).slice(0, 120)} | ${dora.chats.join(' / ').slice(0, 300)}`);
   check('Nichts abgebucht', (await balance(dora)) === 961.6);
   void dw2;
   if (dora.currentWindow) dora.closeWindow(dora.currentWindow);
 
-  await cmd('smpadmin geld geben Dora 5000');
+  await cmd('smpadmin geld geben Dora 20000');
   const xw = await openBy(dora, '/shop ender chest');
   check('Suche „ender chest“ findet die Endertruhe', slotOf(xw, 'ender_chest') >= 9, title(xw));
   const ecw = await clickOpen(dora, slotOf(xw, 'ender_chest'));
@@ -824,19 +833,20 @@ async function main() {
   await waitFor(() => sees(dora, /Wie viele/), 3000);
   check('Eigene Menge: Frage im Chat', sees(dora, /Wie viele\?/), last(dora, /Wie viele/));
   const confWin = nextWindow(dora);
-  dora.chat('4'); // 4× = 400 ₮ → Nachfrage
+  dora.chat('4'); // 4× = 6.600 ₮ → Nachfrage
   const conf = await confWin;
   check('Ab 250 ₮ fragt die Händlerin nach', /Wirklich kaufen/.test(title(conf)), title(conf));
   clear(dora);
   await click(dora, 10);
   await waitFor(() => sees(dora, /Gekauft/), 3000);
-  check('Nach „Ja“ gekauft: 4 goldene Äpfel für 400 ₮', sees(dora, /Gekauft: 4× .*400 ₮/) && count(dora, 'golden_apple') === 4,
+  check('Nach „Ja“ gekauft: 4 goldene Äpfel für 6.600 ₮ (Gold ist kostbar)', sees(dora, /Gekauft: 4× .*6\.600 ₮/)
+    && count(dora, 'golden_apple') === 4,
     last(dora, /Gekauft/));
   void gaw;
   if (dora.currentWindow) dora.closeWindow(dora.currentWindow);
   await sleep(400);
 
-  await cmd('give Dora wheat 100');
+  await cmd('give Dora wheat 100', 'smpadmin boerse zuruecksetzen');
   await sleep(600);
   const fw2 = await openBy(dora, '/shop weizen');
   const whw = await clickOpen(dora, slotOf(fw2, 'wheat'));
@@ -851,6 +861,7 @@ async function main() {
   await sleep(300);
   check('„Alle verkaufen“ zeigt 84', /Alle verkaufen \(84\)/.test(itemText(dora.currentWindow?.slots[34])),
     itemText(dora.currentWindow?.slots[34]));
+  await cmd('smpadmin boerse zuruecksetzen');
   clear(dora);
   reopen = nextWindow(dora);
   await click(dora, 34);
@@ -864,7 +875,7 @@ async function main() {
   check('Verkaufen ohne Ware: „Du hast nur 0 davon“', sees(dora, /Du hast nur 0 davon/), last(dora, /hast nur/));
   if (dora.currentWindow) dora.closeWindow(dora.currentWindow);
 
-  await cmd('give Dora bone 10', 'give Dora rotten_flesh 20', 'give Dora torch 5');
+  await cmd('give Dora bone 10', 'give Dora rotten_flesh 20', 'give Dora torch 5', 'smpadmin boerse zuruecksetzen');
   await sleep(600);
   const sa = await openBy(dora, '/shop verkaufen');
   check('Inventar verkaufen: Übersicht vorher', /Wirklich verkaufen/.test(title(sa)) && /Stein|Stone|stone/i.test(itemText(sa?.slots[13])),
@@ -876,11 +887,117 @@ async function main() {
     last(dora, /verkauft/));
   check('Fackeln (kauft sie nicht an) und Äpfel bleiben', count(dora, 'torch') === 5 && count(dora, 'golden_apple') === 4
     && count(dora, 'stone') === 0 && count(dora, 'bone') === 0);
-  check('Kontostand stimmt genau: 5.553 ₮', (await balance(dora)) === 5553, String(await balance(dora)));
+  check('Kontostand stimmt genau: 14.353 ₮', (await balance(dora)) === 14353, String(await balance(dora)));
   const shopAdm = (await cmd('smpadmin shop')).join(' ');
-  // Käufe: Stein 38,40 + Endertruhe 70 + Äpfel 400; Ankauf: Anna 32 + 123 (vorher), Dora 8 + 42 + 11,40
-  check('Kassenbuch: /smpadmin shop zeigt Umsatz und Ankauf genau', /kauften für (?:§.)*508,40 ₮(?:§.)* \(3 Käufe\)/.test(shopAdm)
+  // Käufe: Stein 38,40 + Endertruhe 70 + Äpfel 6.600; Ankauf: Anna 32 + 123 (vorher), Dora 8 + 42 + 11,40
+  check('Kassenbuch: /smpadmin shop zeigt Umsatz und Ankauf genau', /kauften für (?:§.)*6\.708,40 ₮(?:§.)* \(3 Käufe\)/.test(shopAdm)
     && /zahlte (?:§.)*216,40 ₮(?:§.)* \(5 Verkäufe\)/.test(shopAdm), shopAdm.slice(0, 260));
+
+  // ------------------------------------------------------------------ Börse, /wert, /verkaufen hand
+  await cmd('smpadmin boerse zuruecksetzen', 'clear Dora', 'give Dora diamond 16', 'give Anna diamond 1',
+    'smpadmin geld geben Anna 20000');
+  await sleep(800);
+  // Anna gibt einen Kaufauftrag: 10 Diamanten zu je 1.000 ₮ (Vroni zahlt nur 800)
+  await hold(anna, 'diamond');
+  confirm = nextWindow(anna);
+  anna.chat('/auftraege neu 10 1000');
+  await confirm;
+  clear(anna);
+  await click(anna, 10);
+  await waitFor(() => sees(anna, /Auftrag steht/), 4000);
+  check('Kaufauftrag: 10 Diamanten zu je 1.000 ₮', sees(anna, /Auftrag steht: 10× .*1\.000 ₮/), last(anna, /Auftrag/));
+  if (anna.currentWindow) anna.closeWindow(anna.currentWindow);
+  await hold(dora, 'diamond');
+  clear(dora);
+  dora.chat('/wert');
+  await waitFor(() => sees(dora, /Bester Kaufauftrag/), 6000);
+  check('/wert: Vroni verkauft 3.200 ₮ und zahlt 800 ₮ – für 16 Stück 12.800 ₮', sees(dora, /Vroni verkauft: 3\.200 ₮/)
+    && sees(dora, /Vroni zahlt: 800 ₮ pro Stück – für deine 16: 12\.800 ₮/), dora.chats.join(' / ').slice(0, 400));
+  check('/wert: bester Kaufauftrag 1.000 ₮ (noch 10 gesucht)', sees(dora, /Kaufauftrag: 1\.000 ₮ pro Stück \(noch 10 gesucht\)/),
+    last(dora, /Kaufauftrag/));
+  check('/wert: Kurs-Verlauf und Knopf „Jetzt verkaufen“', sees(dora, /Kurs 24 Std\./) && sees(dora, /\[Jetzt verkaufen\]/),
+    dora.chats.slice(-3).join(' / '));
+  const beforeSell = await balance(dora);
+  clear(dora);
+  dora.chat('/verkaufen hand');
+  await waitFor(() => sees(dora, /An Vroni verkauft/), 6000);
+  check('Sofortverkauf: erst 10 an den Kaufauftrag (+9.800 ₮, 2 % Gebühr)',
+    sees(dora, /An Kaufaufträge geliefert: 10× .*\+9\.800 ₮.*Gebühr 200 ₮/), last(dora, /Kaufaufträge/));
+  check('… dann die übrigen 6 an Vroni (+4.800 ₮)', sees(dora, /An Vroni verkauft: 6× .*\+4\.800 ₮/), last(dora, /Vroni/));
+  const afterSell = await balance(dora);
+  check('Diamanten weg, Geld genau da (+14.600 ₮)', count(dora, 'diamond') === 0 && afterSell === beforeSell + 14600,
+    `${beforeSell} → ${afterSell}`);
+  await waitFor(() => sees(anna, /Auftrag erfüllt/), 4000);
+  check('Anna: „Auftrag erfüllt!“', sees(anna, /Auftrag erfüllt/), last(anna, /Auftrag/));
+
+  // Börse: Vroni hat 6 Diamanten angekauft → Kurs gefallen
+  const ex = await openBy(dora, '/boerse');
+  check('/boerse öffnet die Börse', /Börse der Marktstadt/.test(title(ex)), title(ex));
+  const fallSlot = [19, 20, 21, 22, 23, 24, 25].find((i) => ex?.slots[i]?.name === 'diamond');
+  check('Diamant steht bei den Fallenden (Kurs ▼ 94 %)', fallSlot !== undefined && /Kurs ▼ 94 %/.test(itemText(ex?.slots[fallSlot])),
+    fallSlot !== undefined ? itemText(ex?.slots[fallSlot]).slice(0, 200) : [19, 20, 21].map((i) => ex?.slots[i]?.name).join(','));
+  check('Reihe „Erze & Edelsteine“ mit Netheritbarren', [28, 29, 30, 31, 32, 33, 34, 35]
+    .some((i) => ex?.slots[i]?.name === 'netherite_ingot'));
+  const dd = fallSlot !== undefined ? await clickOpen(dora, fallSlot) : null;
+  check('Ware an der Börse: Verlauf als Säulen, „jetzt“ rot', dd?.slots[44]?.name === 'red_stained_glass_pane'
+    && /jetzt: Kurs 94 %/.test(plain(dd?.slots[44]?.customName)), `${dd?.slots[44]?.name} ${plain(dd?.slots[44]?.customName)}`);
+  check('Vroni zahlt jetzt weniger (749,66 ₮), verlangt aber gleich viel (3.200 ₮)',
+    /Vroni verkauft: 3\.200 ₮.*Vroni zahlt: 749,66 ₮/.test(itemText(dd?.slots[4])), itemText(dd?.slots[4]).slice(0, 240));
+  check('Heute bei Vroni: 6 verkauft', /0 gekauft · 6 verkauft/.test(itemText(dd?.slots[4])));
+  const wk = await clickOpen(dora, 46);
+  check('Umschalten auf 7 Tage', /Verlauf/.test(title(wk)) && /24 Stunden zeigen/.test(plain(wk?.slots[46]?.customName)),
+    plain(wk?.slots[46]?.customName));
+  if (dora.currentWindow) dora.closeWindow(dora.currentWindow);
+
+  // Kurs von Hand (Admin), Kauf zum höheren Kurs, Ankauf bleibt beim Grundpreis
+  const setOut = (await cmd('smpadmin boerse setzen gold_ingot 150')).join(' ');
+  check('/smpadmin boerse setzen: Gold auf 150 %', /150 %/.test(setOut), setOut);
+  const admEx = (await cmd('smpadmin boerse')).join(' ');
+  check('/smpadmin boerse zeigt 2 bewegte Waren', /Börse: 2 Waren/.test(admEx), admEx.slice(0, 200));
+  await cmd('give Dora gold_ingot 2');
+  await sleep(600);
+  await hold(dora, 'gold_ingot');
+  clear(dora);
+  dora.chat('/wert');
+  await waitFor(() => sees(dora, /Vroni zahlt/), 5000);
+  check('/wert Gold: Vroni verkauft 300 ₮ (▲ 150 %), zahlt weiter 60 ₮', sees(dora, /Vroni verkauft: 300 ₮ pro Stück \(▲ 150 %\)/)
+    && sees(dora, /Vroni zahlt: 60 ₮ pro Stück/), dora.chats.join(' / ').slice(0, 300));
+  const gsw = await openBy(dora, '/shop gold ingot');
+  const gws = await clickOpen(dora, slotOf(gsw, 'gold_ingot'));
+  clear(dora);
+  const goldConfirm = nextWindow(dora);
+  await click(dora, 11); // 1× = 300 ₮ → Nachfrage (ab 250 ₮)
+  const gcw = await goldConfirm;
+  check('Nachfrage zeigt den Preis zum Kurs (300 ₮)', /Wirklich kaufen/.test(title(gcw)) && /300 ₮/.test(itemText(gcw?.slots[13])),
+    `${title(gcw)} ${itemText(gcw?.slots[13]).slice(0, 120)}`);
+  reopen = nextWindow(dora);
+  await click(dora, 10);
+  await waitFor(() => sees(dora, /Gekauft/), 3000);
+  await reopen;
+  check('Gekauft zum Kurs: 1 Goldbarren für 300 ₮', sees(dora, /Gekauft: 1× .*300 ₮/), last(dora, /Gekauft/));
+  void gws;
+  if (dora.currentWindow) dora.closeWindow(dora.currentWindow);
+  const board3 = (await cmd('execute in minecraft:smp_spawn run data get entity '
+    + '@e[type=text_display,tag=morni_smp_exchange,limit=1] text')).join(' ');
+  check('Kurstafel am Händlerhaus: Börse, Gold ▲50 %, Diamant ▼6 %', /Börse · Exchange/.test(board3)
+    && /▲50%/.test(board3) && /▼6%/.test(board3) && /item\.minecraft\.diamond/.test(board3), board3.slice(0, 300));
+  const boardPos = (await cmd('execute in minecraft:smp_spawn run data get entity '
+    + '@e[type=text_display,tag=morni_smp_exchange,limit=1] Pos')).join(' ');
+  check('Kurstafel steht vor der Holztafel an der Straße (z ≈ −4)', /,\s*-3\.9\dd?/.test(boardPos), boardPos);
+
+  // ganzes Inventar, niemand kauft, Wert des Inventars
+  await cmd('give Dora wheat 20', 'give Dora torch 1');
+  await sleep(600);
+  clear(dora);
+  dora.chat('/wert alles');
+  await waitFor(() => sees(dora, /Inventar ist bei Vroni/), 4000);
+  check('/wert alles: Wert des Inventars bei Vroni', sees(dora, /Inventar ist bei Vroni gerade [\d.,]+ ₮ wert/), last(dora, /Inventar/));
+  const va = await openBy(dora, '/verkaufen alles');
+  check('/verkaufen alles: Übersicht vorher', /Wirklich verkaufen/.test(title(va)), title(va));
+  if (dora.currentWindow) dora.closeWindow(dora.currentWindow);
+  await hold(dora, 'torch');
+  const nobody = await say(dora, '/verkaufen hand', /keinen Käufer/);
+  check('/verkaufen hand: Fackel – „keinen Käufer“, bleibt in der Hand', Boolean(nobody) && count(dora, 'torch') === 1, nobody);
 
   dora.quit();
 
@@ -898,6 +1015,9 @@ async function main() {
     check('Händlerhaus auf Englisch', /Merchant house/.test(title(enShop)) &&
       /Your money: 100 ₮/.test(itemText(enShop?.slots[49])) && /Building blocks/.test(plain(enShop?.slots[11]?.customName)),
       `${title(enShop)} / ${itemText(enShop?.slots[49])}`);
+    if (cleo.currentWindow) cleo.closeWindow(cleo.currentWindow);
+    const enEx = await openBy(cleo, '/boerse');
+    check('Börse auf Englisch', /Market town exchange/.test(title(enEx)), title(enEx));
     if (cleo.currentWindow) cleo.closeWindow(cleo.currentWindow);
     cleo.quit();
     const final = await balance(anna);

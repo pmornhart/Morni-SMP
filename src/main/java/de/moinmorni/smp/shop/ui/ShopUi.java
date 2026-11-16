@@ -160,6 +160,11 @@ public final class ShopUi {
             click(pl);
             s.plugin.auctionUi().command(pl, new String[0]);
         });
+        m.set(51, Items.button(Material.CLOCK, s.msg.text(lang, "exchange.button"),
+                List.of(s.msg.text(lang, "exchange.button.lore"))), pl -> {
+            click(pl);
+            s.plugin.exchangeUi().main(pl);
+        });
         balance(m, 49, p, lang);
         close(m, 53, lang);
         m.open(p);
@@ -296,12 +301,13 @@ public final class ShopUi {
     /** Kauf- und Ankaufspreis, Tagesmenge, Tagesgrenze, Saison. */
     private void priceLines(List<Component> lore, Player p, Ware w, Material mat, Map<String, Long> soldToday,
                             String lang) {
+        ServerShop.Price pr = s.shop.price(w);
         if (w.buyable()) {
-            lore.add(s.msg.text(lang, "merchant.ware.buy", Msg.money("price", w.buy(), lang)));
+            lore.add(s.msg.text(lang, "merchant.ware.buy", Msg.money("price", pr.buy(), lang)));
             int stack = Math.min(mat.getMaxStackSize(), 64);
             if (stack > 1) {
                 lore.add(s.msg.text(lang, "merchant.ware.buy.stack", Msg.t("amount", stack),
-                        Msg.money("price", w.buy() * stack, lang)));
+                        Msg.money("price", pr.buy() * stack, lang)));
             }
             if (w.buyDaily() > 0) {
                 int left = s.shop.leftToday(p.getUniqueId(), w, s.today());
@@ -312,7 +318,7 @@ public final class ShopUi {
             lore.add(s.msg.text(lang, "merchant.ware.no-buy"));
         }
         if (w.sellable()) {
-            lore.add(s.msg.text(lang, "merchant.ware.sell", Msg.money("price", w.sell(), lang)));
+            lore.add(s.msg.text(lang, "merchant.ware.sell", Msg.money("price", pr.sell(), lang)));
             long full = w.daily() - soldToday.getOrDefault(w.key(), 0L);
             lore.add(full > 0 ? s.msg.text(lang, "merchant.ware.sell.full", Msg.t("full", full))
                     : s.msg.text(lang, "merchant.ware.sell.less"));
@@ -321,6 +327,9 @@ public final class ShopUi {
         }
         if (!w.months().isEmpty()) {
             lore.add(s.msg.text(lang, "merchant.ware.season"));
+        }
+        if (pr.percent() != 100) {
+            lore.add(ExchangeUi.courseLine(s, lang, pr));
         }
     }
 
@@ -348,12 +357,13 @@ public final class ShopUi {
         int stack = Math.min(mat.getMaxStackSize(), 64);
         int room = room(p, mat);
         Runnable redraw = () -> ware(p, w, back);
+        ServerShop.Price pr = s.shop.price(w);
 
         // Kaufen
         if (w.buyable() && w.inSeason(month())) {
             int left = s.shop.leftToday(p.getUniqueId(), w, s.today());
             m.show(9, Items.button(Material.LIME_DYE, s.msg.text(lang, "merchant.buy.header"),
-                    List.of(s.msg.text(lang, "merchant.buy.header.lore", Msg.money("price", w.buy(), lang)))));
+                    List.of(s.msg.text(lang, "merchant.buy.header.lore", Msg.money("price", pr.buy(), lang)))));
             int[] amounts = stack >= 64 ? AMOUNTS_64 : stack > 1 ? AMOUNTS_16 : AMOUNTS_1;
             for (int i = 0; i < amounts.length; i++) {
                 int n = amounts[i];
@@ -361,7 +371,7 @@ public final class ShopUi {
                     continue; // mehr gibt es pro Tag nie
                 }
                 ItemStack icon = new ItemStack(mat, Math.min(n, mat.getMaxStackSize()));
-                m.set(11 + i, buyButton(icon, s.msg.text(lang, "merchant.buy.button", Msg.t("amount", n)), w, n,
+                m.set(11 + i, buyButton(icon, s.msg.text(lang, "merchant.buy.button", Msg.t("amount", n)), pr.buy(), n,
                         balance, room, left, lang), pl -> buy(pl, w, n, redraw));
             }
             m.set(16, Items.button(Material.NAME_TAG, s.msg.text(lang, "merchant.buy.custom")),
@@ -374,15 +384,15 @@ public final class ShopUi {
                     }
                     int k = STACKS[i];
                     m.set(20 + i, buyButton(new ItemStack(Material.BARREL, k), s.msg.text(lang, "merchant.buy.stacks",
-                            Msg.t("stacks", k), Msg.t("amount", n)), w, n, balance, room, left, lang),
+                            Msg.t("stacks", k), Msg.t("amount", n)), pr.buy(), n, balance, room, left, lang),
                             pl -> buy(pl, w, n, redraw));
                 }
             }
-            int fill = Math.min(Math.min(room, Pricing.affordable(balance, w.buy())), left);
+            int fill = Math.min(Math.min(room, Pricing.affordable(balance, pr.buy())), left);
             fill = Math.min(fill, Pricing.MAX_AMOUNT);
             int fillAmount = fill;
             m.set(24, Items.button(Material.CHEST, s.msg.text(lang, "merchant.buy.fill", Msg.t("amount", fill)),
-                    fill > 0 ? List.of(s.msg.text(lang, "merchant.cost", Msg.money("price", w.buy() * fill, lang)))
+                    fill > 0 ? List.of(s.msg.text(lang, "merchant.cost", Msg.money("price", pr.buy() * fill, lang)))
                             : List.of(s.msg.text(lang, "merchant.buy.fill.none"))), pl -> {
                 if (fillAmount > 0) {
                     buy(pl, w, fillAmount, redraw);
@@ -398,7 +408,7 @@ public final class ShopUi {
         // Verkaufen
         if (w.sellable()) {
             m.show(27, Items.button(Material.ORANGE_DYE, s.msg.text(lang, "merchant.sell.header"),
-                    List.of(s.msg.text(lang, "merchant.ware.sell", Msg.money("price", w.sell(), lang)))));
+                    List.of(s.msg.text(lang, "merchant.ware.sell", Msg.money("price", pr.sell(), lang)))));
             int[] amounts = stack >= 64 ? AMOUNTS_64 : stack > 1 ? AMOUNTS_16 : AMOUNTS_1;
             for (int i = 0; i < amounts.length; i++) {
                 int n = amounts[i];
@@ -431,6 +441,11 @@ public final class ShopUi {
             click(pl);
             s.plugin.auctionUi().command(pl, new String[] {"suche", w.id()});
         });
+        m.set(38, Items.button(Material.CLOCK, s.msg.text(lang, "exchange.chart.button"),
+                List.of(ExchangeUi.courseLine(s, lang, pr), s.msg.text(lang, "exchange.chart.button.lore"))), pl -> {
+            click(pl);
+            s.plugin.exchangeUi().detail(pl, w, false, () -> ware(pl, w, back));
+        });
         m.set(45, Items.button(Material.ARROW, s.msg.text(lang, "menu.back")), pl -> {
             click(pl);
             back.run();
@@ -440,9 +455,9 @@ public final class ShopUi {
         m.open(p);
     }
 
-    private ItemStack buyButton(ItemStack icon, Component name, Ware w, int n, long balance, int room, int left,
+    private ItemStack buyButton(ItemStack icon, Component name, long unit, int n, long balance, int room, int left,
                                 String lang) {
-        long cost = w.buy() * n;
+        long cost = unit * n;
         List<Component> lore = new ArrayList<>();
         lore.add(s.msg.text(lang, "merchant.cost", Msg.money("price", cost, lang)));
         if (cost > balance) {
@@ -498,7 +513,7 @@ public final class ShopUi {
             return;
         }
         String lang = s.msg.lang(p);
-        long cost = Pricing.cost(w.buy(), amount);
+        long cost = Pricing.cost(s.shop.price(w).buy(), amount);
         if (cost < 0 || !Pricing.validAmount(amount)) {
             s.msg.send(p, "merchant.amount.bad", Msg.t("max", Pricing.MAX_AMOUNT));
             no(p);
@@ -512,9 +527,9 @@ public final class ShopUi {
                     mat.getMaxStackSize())), List.of(s.msg.text(lang, "merchant.confirm.line", Msg.t("amount", amount),
                     Msg.c("item", NoticeSender.itemName(w.key())), Msg.money("price", cost, lang))),
                     s.msg.text(lang, "merchant.confirm.buy.yes", Msg.money("price", cost, lang)),
-                    () -> doBuy(p, w, mat, amount, after), after);
+                    () -> doBuy(p, w, mat, amount, cost, after), after);
         } else {
-            doBuy(p, w, mat, amount, after);
+            doBuy(p, w, mat, amount, cost, after);
         }
     }
 
@@ -542,17 +557,23 @@ public final class ShopUi {
         return true;
     }
 
-    private void doBuy(Player p, Ware w, Material mat, int amount, Runnable after) {
+    private void doBuy(Player p, Ware w, Material mat, int amount, long shown, Runnable after) {
         if (!p.isOnline()) {
             return;
         }
-        long cost = w.buy() * amount;
+        long cost = Pricing.cost(s.shop.price(w).buy(), amount);
+        String lang = s.msg.lang(p);
+        if (cost > shown) {
+            // der Kurs ist gestiegen, seit der Preis gezeigt wurde
+            s.msg.send(p, "merchant.price-changed", Msg.money("price", cost, lang));
+            no(p);
+            return;
+        }
         // nach einer Nachfrage kann sich alles geändert haben – noch einmal prüfen
         if (!precheckBuy(p, w, mat, amount, cost)) {
             return;
         }
-        ServerShop.Deal d = s.shop.buy(p.getUniqueId(), w.key(), amount, s.today(), month());
-        String lang = s.msg.lang(p);
+        ServerShop.Deal d = s.shop.buy(p.getUniqueId(), w.key(), amount, s.today(), month(), shown);
         switch (d.status()) {
             case OK -> {
                 give(p, mat, amount);
@@ -577,6 +598,10 @@ public final class ShopUi {
             }
             case BAD_AMOUNT -> {
                 s.msg.send(p, "merchant.amount.bad", Msg.t("max", Pricing.MAX_AMOUNT));
+                no(p);
+            }
+            case PRICE_CHANGED -> {
+                s.msg.send(p, "merchant.price-changed", Msg.money("price", d.total(), lang));
                 no(p);
             }
             default -> {
@@ -734,7 +759,7 @@ public final class ShopUi {
     // ---------------------------------------------------------------- Inventar
 
     /** Unveränderte Gegenstände (ohne Namen, Verzauberung, Schaden) im Hauptinventar, nach Sorte. */
-    static Map<Material, Integer> inventoryCounts(Player p) {
+    public static Map<Material, Integer> inventoryCounts(Player p) {
         Map<Material, Integer> out = new LinkedHashMap<>();
         for (ItemStack it : p.getInventory().getStorageContents()) {
             if (plain(it)) {
@@ -744,7 +769,8 @@ public final class ShopUi {
         return out;
     }
 
-    private Map<String, Integer> sellableInventory(Player p) {
+    /** Was die Händlerin aus dem Inventar ankauft: Sorte → Stück. */
+    public Map<String, Integer> sellableInventory(Player p) {
         Map<String, Integer> out = new LinkedHashMap<>();
         Catalog cat = s.shop.catalog();
         for (Map.Entry<Material, Integer> e : inventoryCounts(p).entrySet()) {
@@ -757,7 +783,7 @@ public final class ShopUi {
         return out;
     }
 
-    static boolean plain(ItemStack it) {
+    public static boolean plain(ItemStack it) {
         return it != null && !it.getType().isAir() && it.isSimilar(new ItemStack(it.getType()));
     }
 
@@ -776,7 +802,7 @@ public final class ShopUi {
     }
 
     /** Genau {@code amount} unveränderte Stück abnehmen (vorher geprüft). */
-    static void take(Player p, Material mat, int amount) {
+    public static void take(Player p, Material mat, int amount) {
         PlayerInventory inv = p.getInventory();
         ItemStack[] contents = inv.getStorageContents();
         int left = amount;
@@ -835,7 +861,7 @@ public final class ShopUi {
         return m.values().stream().mapToInt(Integer::intValue).sum();
     }
 
-    static Material material(String key, Material fallback) {
+    public static Material material(String key, Material fallback) {
         Material m = Material.matchMaterial(key);
         return m != null && m.isItem() && !m.isAir() ? m : fallback;
     }

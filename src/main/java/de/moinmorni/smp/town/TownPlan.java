@@ -28,7 +28,7 @@ import java.util.Map;
 public final class TownPlan {
 
     /** Bau-Fassung: wird sie erhöht, baut sich die Stadt beim nächsten Start neu (Stände werden vorher geräumt). */
-    public static final int VERSION = 6;
+    public static final int VERSION = 7;
 
     public static final int AREA = 58;
     public static final int FLAT = 51;
@@ -41,6 +41,7 @@ public final class TownPlan {
     private final List<Layout.Gate> gates = new ArrayList<>();
     private Layout.Spot merchant = new Layout.Spot(0.5, 1, 0.5, 0f);
     private final List<Layout.Spot> showcase = new ArrayList<>();
+    private Layout.Spot exchange = new Layout.Spot(0.5, 1, 0.5, 0f);
 
     private TownPlan() {
     }
@@ -63,7 +64,7 @@ public final class TownPlan {
         t.signposts();
         Connect.run(t.plan);
         Layout layout = new Layout(0.5, 1, 10.5, 180f, AREA, FLAT, List.copyOf(t.stalls), Map.copyOf(t.triggers),
-                List.copyOf(t.gates), 0.5, 10.3, 0.5, t.merchant, List.copyOf(t.showcase));
+                List.copyOf(t.gates), 0.5, 10.3, 0.5, t.merchant, List.copyOf(t.showcase), t.exchange);
         return new Result(t.plan, layout);
     }
 
@@ -516,6 +517,38 @@ public final class TownPlan {
         merchant = new Layout.Spot(f.x(6, 4) + 0.5, 1, f.z(6, 4) + 0.5, yaw(f.front));
         showcase.add(new Layout.Spot(f.x(4, 3) + 0.5, 2.6, f.z(4, 3) + 0.5, yaw(f.front)));
         showcase.add(new Layout.Spot(f.x(8, 3) + 0.5, 2.6, f.z(8, 3) + 0.5, yaw(f.front)));
+        exchangeBoard(f, w);
+    }
+
+    /**
+     * Die Kurstafel der Börse an der Seite des Händlerhauses, zur Hauptstraße hin: dunkle Holztafel mit Rahmen und
+     * Laternen, die Schrift (Kurse) stellt das Plugin davor ({@code ExchangeBoard}).
+     */
+    private void exchangeBoard(Frame f, int w) {
+        int u = w - 1; // Seitenwand zur Straße
+        Dir out = f.right; // nach außen (zur Straße)
+        f.fill(u, 1, 2, u, 4, 8, "dark_oak_planks");
+        f.fill(u, 1, 1, u, 4, 1, "stripped_dark_oak_log[axis=y]");
+        f.fill(u, 1, 9, u, 4, 9, "stripped_dark_oak_log[axis=y]");
+        f.fill(u, 0, 1, u, 0, 9, "polished_andesite");
+        // Sockel vorne (Stufen) und goldene Ecken
+        for (int v = 2; v <= 8; v++) {
+            plan.set(f.x(u, v) + out.dx, 0, f.z(u, v) + out.dz, "polished_andesite");
+        }
+        f.set(u, 4, 1, "gold_block");
+        f.set(u, 4, 9, "gold_block");
+        plan.set(f.x(u, 1) + out.dx, 4, f.z(u, 1) + out.dz, "lantern[hanging=false]");
+        plan.set(f.x(u, 9) + out.dx, 4, f.z(u, 9) + out.dz, "lantern[hanging=false]");
+        plan.set(f.x(u, 1) + out.dx, 3, f.z(u, 1) + out.dz, "spruce_fence");
+        plan.set(f.x(u, 9) + out.dx, 3, f.z(u, 9) + out.dz, "spruce_fence");
+        plan.set(f.x(u, 1) + out.dx, 2, f.z(u, 1) + out.dz, "spruce_fence");
+        plan.set(f.x(u, 9) + out.dx, 2, f.z(u, 9) + out.dz, "spruce_fence");
+        plan.set(f.x(u, 1) + out.dx, 1, f.z(u, 1) + out.dz, "spruce_fence");
+        plan.set(f.x(u, 9) + out.dx, 1, f.z(u, 9) + out.dz, "spruce_fence");
+        // Schrift mittig vor der Tafel, knapp über dem Sockel
+        double cx = (f.x(u, 2) + f.x(u, 8)) / 2.0 + 0.5 + out.dx * 0.53;
+        double cz = (f.z(u, 2) + f.z(u, 8)) / 2.0 + 0.5 + out.dz * 0.53;
+        exchange = new Layout.Spot(cx, 1.05, cz, yaw(out));
     }
 
     /** Blickrichtung (Minecraft-Yaw) in Richtung {@code d}. */

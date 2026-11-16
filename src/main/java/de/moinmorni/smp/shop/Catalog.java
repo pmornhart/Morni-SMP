@@ -37,12 +37,19 @@ public final class Catalog {
         return new Catalog(List.of(), Map.of(), Map.of());
     }
 
+    /** Sortiment ohne Preis-Faktoren (alle 1). */
+    public static Catalog of(List<Category> cats, List<Ware> list, int maxSellPercent,
+                             java.util.function.Predicate<String> known, Consumer<String> warn) {
+        return of(cats, list, maxSellPercent, Map.of(), known, warn);
+    }
+
     /**
      * Sortiment bauen. Was nicht passt, fällt weg und wird über {@code warn} gemeldet: unbekannte Abteilung, doppelte
-     * Sorte, weder Kauf- noch Ankaufspreis, Sorte, die {@code known} nicht kennt. Ankaufspreise werden mit
-     * {@link Pricing#capSell} gedeckelt.
+     * Sorte, weder Kauf- noch Ankaufspreis, Sorte, die {@code known} nicht kennt. Die Preise jeder Abteilung werden mit
+     * ihrem Faktor ({@code haendler.faktoren}) multipliziert, Ankaufspreise mit {@link Pricing#capSell} gedeckelt und
+     * vom {@link LoopGuard} so weit gesenkt, dass kein Umweg über Werkbank, Ofen oder Abbauen Gewinn bringt.
      */
-    public static Catalog of(List<Category> cats, List<Ware> list, int maxSellPercent,
+    public static Catalog of(List<Category> cats, List<Ware> list, int maxSellPercent, Map<String, Double> factors,
                              java.util.function.Predicate<String> known, Consumer<String> warn) {
         Map<String, Category> catMap = new LinkedHashMap<>();
         for (Category c : cats) {
@@ -51,10 +58,6 @@ public final class Catalog {
             }
         }
         Map<String, Ware> wareMap = new LinkedHashMap<>();
-        Map<String, List<Ware>> by = new LinkedHashMap<>();
-        for (Category c : catMap.values()) {
-            by.put(c.id(), new ArrayList<>());
-        }
         for (Ware w : list) {
             if (!catMap.containsKey(w.category())) {
                 warn.accept("Ware " + w.key() + ": unbekannte Abteilung " + w.category());
@@ -68,24 +71,71 @@ public final class Catalog {
                 warn.accept("Unbekannte Sorte: " + w.key());
                 continue;
             }
-            long sell = Pricing.capSell(w.buy(), w.sell(), maxSellPercent);
-            if (sell != w.sell()) {
+            double f = factor(factors, w.category());
+            long buy = scale(w.buy(), f);
+            long sell = Pricing.capSell(buy, scale(w.sell(), f), maxSellPercent);
+            if (sell != scale(w.sell(), f)) {
                 warn.accept("Ankaufspreis von " + w.key() + " auf " + sell + " Hundertstel gesenkt (höchstens "
                         + maxSellPercent + " % vom Kaufpreis)");
             }
-            Ware fixed = new Ware(w.key(), w.category(), Math.max(0, w.buy()), sell, Math.max(1, w.daily()),
+            Ware fixed = new Ware(w.key(), w.category(), buy, sell, Math.max(1, w.daily()),
                     Math.max(0, w.buyDaily()), w.months());
             if (!fixed.buyable() && !fixed.sellable()) {
                 warn.accept("Ware " + w.key() + " hat weder Kauf- noch Ankaufspreis");
                 continue;
             }
             wareMap.put(fixed.key(), fixed);
-            by.get(fixed.category()).add(fixed);
+        }
+        guard(wareMap, warn);
+        Map<String, List<Ware>> by = new LinkedHashMap<>();
+        for (Category c : catMap.values()) {
+            by.put(c.id(), new ArrayList<>());
+        }
+        for (Ware w : wareMap.values()) {
+            by.get(w.category()).add(w);
         }
         Map<String, List<Ware>> frozen = new LinkedHashMap<>();
         by.forEach((k, v) -> frozen.put(k, List.copyOf(v)));
         return new Catalog(List.copyOf(catMap.values()), Collections.unmodifiableMap(wareMap),
                 Collections.unmodifiableMap(frozen));
+    }
+
+    /** Ankaufspreise senken, die eine Geld-Schleife über Werkbank, Ofen oder Abbauen öffnen würden. */
+    private static void guard(Map<String, Ware> wares, Consumer<String> warn) {
+        Map<String, Long> buy = new LinkedHashMap<>();
+        wares.values().forEach(w -> buy.put(w.key(), w.buy()));
+        Map<String, Double> cheapest = LoopGuard.cheapest(buy, Recipes.ALL);
+        for (Ware w : List.copyOf(wares.values())) {
+            long max = LoopGuard.maxSell(w.key(), cheapest);
+            if (w.sell() <= max) {
+                continue;
+            }
+            warn.accept("Ankaufspreis von " + w.key() + " auf " + max + " Hundertstel gesenkt (sonst Geld-Schleife: "
+                    + LoopGuard.route(w.key(), cheapest, Recipes.ALL) + ")");
+            Ware fixed = new Ware(w.key(), w.category(), w.buy(), max, w.daily(), w.buyDaily(), w.months());
+            if (fixed.buyable() || fixed.sellable()) {
+                wares.put(w.key(), fixed);
+            } else {
+                wares.remove(w.key());
+            }
+        }
+    }
+
+    private static double factor(Map<String, Double> factors, String category) {
+        Double f = factors == null ? null : factors.get(category);
+        return f == null || !Double.isFinite(f) || f <= 0 ? 1.0 : f;
+    }
+
+    /** Preis × Faktor, auf Hundertstel gerundet (ein Preis über 0 bleibt über 0). */
+    static long scale(long price, double f) {
+        if (price <= 0) {
+            return 0;
+        }
+        if (f == 1.0) {
+            return price;
+        }
+        double v = Math.min(de.moinmorni.smp.economy.Money.MAX, Math.round(price * f));
+        return Math.max(1, (long) v);
     }
 
     public List<Category> categories() {

@@ -20,7 +20,9 @@ public record Layout(
         /* Bestenliste (Mitte unten der Schrift) */
         double boardX, double boardY, double boardZ,
         /* Händlerin im Händlerhaus (Füße, Blickrichtung) und Schaustücke über dem Tresen */
-        Spot merchant, List<Spot> showcase) {
+        Spot merchant, List<Spot> showcase,
+        /* Kurstafel der Börse: Mitte unten der Schrift, Blickrichtung der Schrift */
+        Spot exchange) {
 
     /** Ein Punkt mit Blickrichtung (Füße bzw. Mitte, relativ zur Stadtmitte, y ab der Bodenschicht). */
     public record Spot(double x, double y, double z, float yaw) {

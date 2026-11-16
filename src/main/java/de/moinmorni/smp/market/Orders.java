@@ -256,6 +256,13 @@ public final class Orders {
         return db.tx(c -> Database.query(c, sql.toString(), Orders::row, args.toArray()));
     }
 
+    /** Offene Aufträge genau dieser Sorte, beste Bezahlung zuerst (für {@code /wert} und den Sofortverkauf). */
+    public List<Order> best(String itemKey, int limit) {
+        return db.tx(c -> Database.query(c, "SELECT " + COLUMNS + " FROM orders WHERE state = ? AND expires > ? "
+                + "AND item_key = ? ORDER BY unit_price DESC, id ASC LIMIT ?", Orders::row, ACTIVE, clock.getAsLong(),
+                itemKey, limit));
+    }
+
     public int count(Category category, String search) {
         List<Object> args = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM orders WHERE state = ? AND expires > ?");

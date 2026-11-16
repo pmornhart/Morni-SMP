@@ -35,8 +35,17 @@ commands:
     usage: /auftraege [neu <menge> <preis pro stück> | meine | suche <text>]
     aliases: [aufträge, auftrag, orders, auftragsbrett]
   verkaufen:
-    description: Ankauf des Händlerhauses – Sachen hineinlegen und verkaufen
+    description: Verkaufen – hineinlegen, was in der Hand ist (erst an Kaufaufträge, dann an Vroni) oder das ganze Inventar
+    usage: /verkaufen [hand | alles]
     aliases: [ankauf, sell]
+  wert:
+    description: Was ist das in deiner Hand wert? (Vroni, Spielermarkt, Kaufaufträge)
+    usage: /wert [alles]
+    aliases: [worth, preis]
+  boerse:
+    description: Börse – Kurse nach Angebot und Nachfrage, Steiger, Fallende, Verlauf
+    usage: /boerse [ware]
+    aliases: [börse, kurse, kurs, markt, exchange]
   shop:
     description: Händlerhaus – kaufen zu festen Preisen, verkaufen an die Händlerin
     usage: /shop [abteilung | suche <text> | verkaufen]
@@ -100,7 +109,7 @@ commands:
     aliases: [sidebar]
   smpadmin:
     description: Verwaltung von MorniSMP (Team)
-    usage: /smpadmin [geld | bau | stadt | neuladen | stand | gs | info]
+    usage: /smpadmin [geld | bau | stadt | neuladen | stand | gs | info | shop | boerse]
     permission: morni.smp.admin
 
 permissions:
