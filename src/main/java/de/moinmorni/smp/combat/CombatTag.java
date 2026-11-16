@@ -27,6 +27,9 @@ import org.bukkit.event.player.PlayerQuitEvent;
  * Kampf-Markierung: Wer einen anderen Spieler trifft (oder getroffen wird), ist {@code combatSeconds} Sekunden „im
  * Kampf“. Solange gibt es keine Teleports (Befehle sind gesperrt, laufende Wartezeiten brechen ab). Wer im Kampf das
  * Spiel verlässt, stirbt – die Sachen fallen an Ort und Stelle, ein Kopfgeld geht an den letzten Gegner.
+ *
+ * <p>Solange jemand im Kampf ist, meldet MorniSMP dem Netzwerk „spielt gerade“: Dann fragt „/lobby“ erst nach – wer im
+ * Kampf geht, verliert ja. Sonst landet man beim Wiederkommen ohnehin dort, wo man war (kein Platz freizuhalten).
  */
 public final class CombatTag implements Listener {
 
@@ -96,6 +99,17 @@ public final class CombatTag implements Listener {
         s.teleports.cancel(p, "teleport.cancel.combat");
         if (fresh) {
             s.msg.send(p, "combat.tagged", Msg.t("seconds", s.settings.combatSeconds));
+            s.network.playing(p, true);
+        }
+    }
+
+    /** Kampf vorbei (abgelaufen, gestorben, rausgeworfen): „spielt gerade“ zurücknehmen. */
+    private void over(UUID id) {
+        boolean was = until.remove(id) != null;
+        lastEnemy.remove(id);
+        Player p = Bukkit.getPlayer(id);
+        if (was && p != null) {
+            s.network.playing(p, false);
         }
     }
 
@@ -113,6 +127,7 @@ public final class CombatTag implements Listener {
                 it.remove();
                 lastEnemy.remove(en.getKey());
                 s.msg.bar(p, "combat.over");
+                s.network.playing(p, false);
             } else {
                 s.msg.bar(p, "combat.bar", Msg.t("seconds", secondsLeft(p)));
             }
@@ -137,15 +152,13 @@ public final class CombatTag implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDeath(PlayerDeathEvent e) {
-        until.remove(e.getEntity().getUniqueId());
-        lastEnemy.remove(e.getEntity().getUniqueId());
+        over(e.getEntity().getUniqueId());
     }
 
     /** Rauswurf durch das Team zählt nicht als Flucht. */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onKick(PlayerKickEvent e) {
-        until.remove(e.getPlayer().getUniqueId());
-        lastEnemy.remove(e.getPlayer().getUniqueId());
+        over(e.getPlayer().getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)

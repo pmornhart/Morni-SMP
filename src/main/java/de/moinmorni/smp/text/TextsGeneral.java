@@ -270,8 +270,8 @@ final class TextsGeneral {
 
         // Verwaltung
         t("admin.help.title", "<au><b>/smpadmin</b></au>", "<au><b>/smpadmin</b></au>");
-        t("admin.help.geld", " <au>geld geben|nehmen|setzen \\<spieler> \\<betrag></au>",
-                " <au>geld geben|nehmen|setzen \\<player> \\<amount></au> (give|take|set)");
+        t("admin.help.geld", " <au>geld [geben|nehmen|setzen] [\\<spieler>] \\<betrag></au> – ohne Spieler: du selbst",
+                " <au>geld [geben|nehmen|setzen] [\\<player>] \\<amount></au> (give|take|set) – no player: yourself");
         t("admin.help.bau", " <au>bau</au> – Bau-Modus (Stadt und Grundstücke bearbeiten)",
                 " <au>bau</au> – build mode (edit town and claims)");
         t("admin.help.stadt", " <au>stadt [neu|tore]</au> – Stand der Marktstadt / neu bauen / Reisetore",
@@ -282,10 +282,16 @@ final class TextsGeneral {
         t("admin.help.gs", " <au>gs</au> – Grundstück hier entfernen", " <au>gs</au> – remove the claim here");
         t("admin.help.info", " <au>info</au> – Kennzahlen", " <au>info</au> – key figures");
         t("admin.reloaded", "<em>✔</em> Einstellungen neu geladen.", "<em>✔</em> Settings reloaded.");
-        t("admin.money.usage", "So geht's: <au>/smpadmin geld geben|nehmen|setzen \\<spieler> \\<betrag></au>",
-                "Usage: <au>/smpadmin geld geben|nehmen|setzen \\<player> \\<amount></au>");
+        t("admin.money.usage", "So geht's: <au>/smpadmin geld [geben|nehmen|setzen] [\\<spieler>] \\<betrag></au> – ohne "
+                + "Spieler bekommst du es selbst, z. B. <au>/smpadmin geld 5000</au>",
+                "Usage: <au>/smpadmin geld [geben|nehmen|setzen] [\\<player>] \\<amount></au> – without a player it's "
+                + "for yourself, e.g. <au>/smpadmin geld 5000</au>");
         t("admin.money.done", "<em>✔</em> <white><name></white> hat jetzt <au><balance></au>.",
                 "<em>✔</em> <white><name></white> now has <au><balance></au>.");
+        t("admin.money.self", "<em>✔</em> Erledigt – du hast jetzt <au><balance></au>. Viel Spaß beim Testen!",
+                "<em>✔</em> Done – you now have <au><balance></au>. Have fun testing!");
+        t("admin.money.got", "<em>✔</em> Das Team hat dir <au><amount></au> gegeben – du hast jetzt <au><balance></au>.",
+                "<em>✔</em> The team gave you <au><amount></au> – you now have <au><balance></au>.");
         t("admin.money.not-enough", "<red><name> hat nicht so viel.</red>", "<red><name> doesn't have that much.</red>");
         t("admin.build.on", "<au>Bau-Modus an</au> – du kannst Stadt und Grundstücke bearbeiten. Schleichen + Klick "
                 + "benutzt Schalter normal.",

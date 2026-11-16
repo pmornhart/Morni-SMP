@@ -53,6 +53,12 @@ function plain(v) {
 }
 
 const cmd = (...commands) => rcon(RCON, PASS, commands);
+/** Aufrufe ans Test-Netzwerk (calls.log), z. B. {t: 'playing', name: 'Anna', playing: true}. */
+const netCalls = () => {
+  const log = path.join(SERVER, 'plugins/MoinMorni/calls.log');
+  return (fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+};
+const lastPlaying = (name) => netCalls().filter((c) => c.t === 'playing' && c.name === name).pop()?.playing;
 
 /** In welcher Welt ist der Spieler (laut Server)? Schlüssel wie „minecraft:smp_spawn“, „minecraft:the_nether“. */
 async function inDim(name, dim) {
@@ -376,8 +382,23 @@ async function main() {
   // ------------------------------------------------------------------ Geld
   const start = await balance(anna);
   check('/geld: Startguthaben 100 ₮', start === 100, String(start));
+  anna.chats.length = 0;
   await cmd('smpadmin geld geben Anna 2000', 'smpadmin geld geben Bert 2000');
+  check('/smpadmin geld geben: Anna erfährt es freundlich', await waitFor(() =>
+    sees(anna, /Das Team hat dir 2\.000 ₮ gegeben – du hast jetzt 2\.100 ₮/), 3000), anna.chats.join(' | '));
   check('/smpadmin geld geben (Konsole)', (await balance(anna)) === 2100 && (await balance(bert)) === 2100);
+  // Owner und Admins geben sich zum Testen selbst Geld: ohne Spielernamen gilt es einem selbst
+  await cmd('op Anna');
+  await sleep(300);
+  const self = await say(anna, '/smpadmin geld 500', /Erledigt – du hast jetzt/);
+  check('/smpadmin geld 500: sich selbst Geld geben', /du hast jetzt 2\.600 ₮/.test(self) && (await balance(anna)) === 2600, self);
+  const back = await say(anna, '/smpadmin geld nehmen 500', /Erledigt – du hast jetzt/);
+  check('/smpadmin geld nehmen 500: auch sich selbst', /du hast jetzt 2\.100 ₮/.test(back), back);
+  await cmd('deop Anna');
+  await cmd('smpadmin geld Bert 100');
+  const bertShort = await balance(bert);
+  await cmd('smpadmin geld nehmen Bert 100');
+  check('/smpadmin geld <spieler> <betrag> (kurz für geben)', bertShort === 2200 && (await balance(bert)) === 2100, String(bertShort));
   clear(bert);
   const paid = await say(anna, '/zahlen Bert 50', /überwiesen/);
   check('/zahlen Bert 50', /50 ₮ an Bert überwiesen/.test(paid), paid);
@@ -719,6 +740,11 @@ async function main() {
   await waitFor(() => anna.health < hp1, 3000);
   check('In der Wildnis wirkt ein Treffer', anna.health < hp1, `${hp1} → ${anna.health}`);
   check('Kampf-Markierung für beide', await waitFor(() => sees(anna, /im Kampf/) && sees(bert, /im Kampf/), 3000));
+  if (NETWORK) {
+    check('Netzwerk: im Kampf „spielen“ beide gerade (dann fragt /lobby erst nach)', await waitFor(() =>
+      lastPlaying('Anna') === true && lastPlaying('Bert') === true, 3000),
+    netCalls().filter((c) => c.t === 'playing').map((c) => `${c.name}:${c.playing}`).join(' '));
+  }
   const blocked = await say(anna, '/spawn', /Im Kampf geht das nicht/);
   check('Im Kampf kein /spawn', blocked !== '', blocked);
 
@@ -736,6 +762,10 @@ async function main() {
   // Echtes Netherportal in der Oberwelt (Vanilla): Rahmen per Konsole, anzünden, hineinstellen → Nether
   {
     await sleep(16000); // Kampf vorbei (Teleport im Kampf gesperrt)
+    if (NETWORK) {
+      check('Netzwerk: Kampf vorbei → Anna „spielt“ nicht mehr', await waitFor(() => lastPlaying('Anna') === false, 3000),
+        netCalls().filter((c) => c.t === 'playing').map((c) => `${c.name}:${c.playing}`).join(' '));
+    }
     const q = anna.entity.position.floored();
     const x = q.x + 3;
     const y = q.y + 1;
