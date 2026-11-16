@@ -1,12 +1,12 @@
 name: MorniSMP
 version: '${project.version}'
-main: de.moinmorni.smp.SmpPlugin
+main: net.morni.smp.SmpPlugin
 api-version: '1.21'
 description: MorniSMP – Überleben mit freiem Markt (Marktstadt, Auktionshaus, Aufträge, Läden, Grundstücke, Zufalls-Teleport).
-authors: [MoinMorni]
-website: https://moinmorni.net
+authors: [morni.net]
+website: https://morni.net
 # Läuft mit dem Netzwerk-Plugin (Sprache, Statistik, Zustand) und auch allein.
-softdepend: [MoinMorni]
+softdepend: [MorniNet]
 
 commands:
   mornismp:

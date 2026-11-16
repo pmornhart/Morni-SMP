@@ -1,0 +1,230 @@
+package net.morni.smp.command;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import net.morni.smp.Smp;
+import net.morni.smp.SmpPlugin;
+import net.morni.smp.claims.Claims;
+import net.morni.smp.economy.Bank;
+import net.morni.smp.economy.Money;
+import net.morni.smp.market.Stalls;
+import net.morni.smp.market.ui.NoticeSender;
+import net.morni.smp.shop.ServerShop;
+import net.morni.smp.text.Msg;
+import org.bukkit.Location;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+
+/**
+ * {@code /smpadmin} (Recht {@code morni.smp.admin} oder OP): Geld geben/nehmen/setzen, Bau-Modus, Stadt neu bauen,
+ * Einstellungen neu laden, Marktstand räumen, Grundstück entfernen, Kennzahlen.
+ */
+public final class AdminCommand implements Router.Handler {
+
+    private static final List<String> SUBS = List.of("geld", "bau", "stadt", "neuladen", "stand", "gs", "info", "shop");
+
+    private final Smp s;
+    private final SmpPlugin plugin;
+    private final MoneyCommands money;
+
+    public AdminCommand(Smp s, SmpPlugin plugin, MoneyCommands money) {
+        this.s = s;
+        this.plugin = plugin;
+        this.money = money;
+    }
+
+    @Override
+    public boolean playersOnly() {
+        return false;
+    }
+
+    private boolean allowed(CommandSender sender) {
+        return !(sender instanceof Player p) || s.admin(p);
+    }
+
+    @Override
+    public void run(CommandSender sender, String[] args) {
+        if (!allowed(sender)) {
+            s.msg.send(sender, "command.no-permission");
+            return;
+        }
+        String sub = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "geld", "money" -> money(sender, args);
+            case "bau", "build" -> build(sender);
+            case "stadt", "town" -> town(sender, args);
+            case "neuladen", "reload" -> {
+                plugin.reloadSettings();
+                s.msg.send(sender, "admin.reloaded");
+            }
+            case "stand", "stall" -> stall(sender, args);
+            case "gs", "claim" -> claim(sender);
+            case "info" -> info(sender);
+            case "shop", "haendler" -> shop(sender);
+            default -> {
+                s.msg.send(sender, "admin.help.title");
+                for (String k : new String[] {"geld", "bau", "stadt", "neuladen", "stand", "gs", "info", "shop"}) {
+                    s.msg.line(sender, "admin.help." + k);
+                }
+            }
+        }
+    }
+
+    @Override
+    public List<String> tab(CommandSender sender, String[] args) {
+        if (!allowed(sender)) {
+            return List.of();
+        }
+        if (args.length == 1) {
+            return SUBS;
+        }
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        if (args.length == 2) {
+            return switch (sub) {
+                case "geld" -> List.of("geben", "nehmen", "setzen");
+                case "stadt" -> List.of("neu", "info", "tore");
+                case "stand" -> List.of("frei");
+                case "gs" -> List.of("weg");
+                default -> List.of();
+            };
+        }
+        if (args.length == 3 && sub.equals("geld")) {
+            return Router.online();
+        }
+        return List.of();
+    }
+
+    private void money(CommandSender sender, String[] args) {
+        if (args.length < 4) {
+            s.msg.send(sender, "admin.money.usage");
+            return;
+        }
+        MoneyCommands.Who w = money.find(args[2]);
+        if (w == null) {
+            s.msg.send(sender, "player.unknown", Msg.t("name", args[2]));
+            return;
+        }
+        long amount = args[1].equalsIgnoreCase("setzen") && args[3].equals("0") ? 0 : Money.parse(args[3]);
+        if (amount < 0) {
+            s.msg.send(sender, "money.invalid");
+            return;
+        }
+        s.bank.ensure(w.uuid(), w.name());
+        Bank.Result r = switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "geben", "give" -> s.bank.deposit(w.uuid(), amount, "admin", sender.getName());
+            case "nehmen", "take" -> s.bank.withdraw(w.uuid(), amount, "admin", sender.getName());
+            case "setzen", "set" -> s.bank.set(w.uuid(), amount, "admin");
+            default -> Bank.Result.INVALID;
+        };
+        if (r == Bank.Result.OK) {
+            s.msg.send(sender, "admin.money.done", Msg.t("name", w.name()),
+                    s.msg.money("balance", s.bank.balance(w.uuid()), sender));
+        } else if (r == Bank.Result.NOT_ENOUGH) {
+            s.msg.send(sender, "admin.money.not-enough", Msg.t("name", w.name()));
+        } else {
+            s.msg.send(sender, "admin.money.usage");
+        }
+    }
+
+    private void build(CommandSender sender) {
+        if (!(sender instanceof Player p)) {
+            s.msg.send(sender, "command.players-only");
+            return;
+        }
+        if (s.building.remove(p.getUniqueId())) {
+            s.msg.send(p, "admin.build.off");
+        } else {
+            s.building.add(p.getUniqueId());
+            s.msg.send(p, "admin.build.on");
+        }
+    }
+
+    private void town(CommandSender sender, String[] args) {
+        if (args.length >= 2 && (args[1].equalsIgnoreCase("tore") || args[1].equalsIgnoreCase("gates"))) {
+            for (net.morni.smp.town.Layout.Gate g : s.town.layout().gates()) {
+                s.msg.line(sender, "admin.town.gate", Msg.t("target", g.target()),
+                        Msg.t("back", fmt(g.backX()) + " " + (s.town.ground() + 1) + " " + fmt(g.backZ())),
+                        Msg.t("gate", (g.box().x1() + g.box().x2() + 1) / 2.0 + " " + (s.town.ground() + 1) + " "
+                                + (g.box().z1() + g.box().z2() + 1) / 2.0));
+            }
+            return;
+        }
+        if (args.length >= 2 && args[1].equalsIgnoreCase("neu")) {
+            if (plugin.rebuildTown()) {
+                s.msg.send(sender, "admin.town.rebuilding");
+            } else {
+                s.msg.send(sender, "admin.town.busy");
+            }
+            return;
+        }
+        Location sp = s.town.spawn();
+        s.msg.send(sender, "admin.town.info", Msg.t("world", s.town.world() == null ? "?" : s.town.world().getName()),
+                Msg.t("ready", s.town.ready()), Msg.t("y", s.town.ground()),
+                Msg.t("stalls", s.town.layout().stalls().size()),
+                Msg.t("spawn", sp == null ? "?" : sp.getBlockX() + " " + sp.getBlockY() + " " + sp.getBlockZ()));
+    }
+
+    private static String fmt(double v) {
+        return String.format(java.util.Locale.ROOT, "%.1f", v);
+    }
+
+    private void stall(CommandSender sender, String[] args) {
+        if (args.length < 3 || !args[1].equalsIgnoreCase("frei")) {
+            s.msg.send(sender, "admin.stall.usage");
+            return;
+        }
+        int id;
+        try {
+            id = Integer.parseInt(args[2]);
+        } catch (NumberFormatException e) {
+            s.msg.send(sender, "admin.stall.usage");
+            return;
+        }
+        Optional<Stalls.Stall> st = s.stalls.get(id);
+        if (st.isEmpty()) {
+            s.msg.send(sender, "admin.stall.usage");
+            return;
+        }
+        int n = st.get().tenant() == null ? 0 : plugin.stallUi().evacuate(st.get());
+        s.stalls.free(id);
+        s.boards.stallSigns();
+        s.msg.send(sender, "admin.stall.freed", Msg.t("id", id), Msg.t("count", n));
+    }
+
+    private void claim(CommandSender sender) {
+        if (!(sender instanceof Player p)) {
+            s.msg.send(sender, "command.players-only");
+            return;
+        }
+        Location l = p.getLocation();
+        Claims.Claim c = s.claims.at(l.getWorld().getName(), l.getBlockX() >> 4, l.getBlockZ() >> 4);
+        if (c == null) {
+            s.msg.send(p, "claim.none-here");
+            return;
+        }
+        s.claims.unclaim(c.world(), c.cx(), c.cz(), p.getUniqueId(), true);
+        int shops = plugin.shopListener().removeInChunk(c.world(), c.cx(), c.cz());
+        s.msg.send(p, "admin.claim.removed", Msg.t("owner", c.ownerName()), Msg.t("shops", shops));
+    }
+
+    /** Umsatz des Händlerhauses seit Mitternacht (Zeitzone des Servers) und die meistgehandelten Waren. */
+    private void shop(CommandSender sender) {
+        long since = s.now().toLocalDate().atStartOfDay(s.settings.zone).toInstant().toEpochMilli();
+        ServerShop.Turnover t = s.shop.turnover(since);
+        s.msg.send(sender, "admin.shop", s.msg.money("income", t.income(), sender), Msg.t("buys", t.purchases()),
+                s.msg.money("payout", t.payout(), sender), Msg.t("sells", t.sales()),
+                Msg.t("wares", s.shop.catalog().size()));
+        for (ServerShop.Top top : t.top()) {
+            s.msg.line(sender, "admin.shop.top", Msg.c("item", NoticeSender.itemName(top.key())),
+                    Msg.t("bought", top.bought()), Msg.t("sold", top.sold()));
+        }
+    }
+
+    private void info(CommandSender sender) {
+        s.msg.send(sender, "admin.info", s.msg.money("total", s.bank.total(), sender),
+                s.msg.money("escrow", s.orders.escrowTotal() + s.bounties.total(), sender),
+                Msg.t("listings", s.ah.count(null, "")), Msg.t("orders", s.orders.count(null, "")),
+                Msg.t("network", s.network.connected() ? (s.network.hubOnline() ? "online" : "offline") : "–"));
+    }
+}

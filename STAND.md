@@ -1,6 +1,6 @@
 # Stand – MorniSMP
 
-**Was es ist:** Spielmodus „Überleben mit freiem Markt“ des MoinMorni-Netzwerks (Paper-Plugin `MorniSMP`, Java 25,
+**Was es ist:** Spielmodus „Überleben mit freiem Markt“ des Netzwerks morni.net (Paper-Plugin `MorniSMP`, Java 25,
 Paper 26.x), Kennung `mirni`. Wunsch von Philip (15.11.2026): Spawn-Stadt, `/rtp`, Marktplatz, freier Markt unter
 Spielern – nur die üblichen Mechaniken, eigene Namen und eigene Optik, nichts für echtes Geld.
 
@@ -10,7 +10,7 @@ Stadtmauer – West Oberwelt, Nord Nether, Ost End – bringen per Zufalls-Telep
 die normalen Dimensionen (Portale, Festungen, Drache wie Vanilla), `/rtp nether` und `/rtp end` gehen ohne „erst
 dort gewesen“.
 
-## Aufbau (`src/main/java/de/moinmorni/smp/`)
+## Aufbau (`src/main/java/net/morni/smp/`)
 
 - `SmpPlugin` (Start, Befehle, Aufgaben), `Smp` (alle Dienste), `Settings` (config.yml, fehlende Schlüssel aus der
   mitgelieferten Datei).
@@ -33,7 +33,7 @@ dort gewesen“.
   `SafeSpot` (reine Rechnung). `combat/CombatTag`. `bounty/Bounties`. `player/`: `Players`, `DailyReward`,
   `PlayerEvents`. `hud/Sidebar` (eigenes Scoreboard, Teams des Netzwerks werden kopiert).
 - `command/`: `Router` + `MoneyCommands`, `TravelCommands`, `ClaimCommand`, `MiscCommands`, `AdminCommand`.
-- `net/`: `Network`, `Connected` (einzige Stelle mit `de.moinmorni.api`), `Standalone`, `Reporter` (Statistik).
+- `net/`: `Network`, `Connected` (einzige Stelle mit `net.morni.api`), `Standalone`, `Reporter` (Statistik).
 - `text/`: Texte de/en, `Msg`.
 - `test/`: `run.sh` (echter Server), `smp-test.cjs` (zwei Test-Spieler), `fake-network/` (Test-Ersatz des
   Netzwerks, schreibt `calls.log`), `rcon.cjs`.
@@ -73,6 +73,13 @@ dort gewesen“.
   26.1.2 (Händlerin + Rechtsklick, Abteilung, Kauf, zu wenig Geld, Tagesgrenze, eigene Menge, Nachfrage, Verkauf, alle
   verkaufen, Inventar verkaufen, Kontostand, `/smpadmin shop`, Englisch). Bilder mit Client 26.3 nur lokal unter
   `~/mm-cache/bilder-smp-shop/`.
+
+- Umbenannt in morni.net (vorher MoinMorni, 16.11.2026, Branch `claude/morni-net` auf `claude/shop`, Version bleibt
+  0.2.0): Paket `net.morni.smp`, Schnittstelle `net.morni.api.MorniNet` (Netzwerk-Plugin „MorniNet“), Adresse
+  `anzeige.adresse: morni.net`, Plugin-Angaben; Test-Startwert als Zahl (dieselbe Welt wie bisher). 62 Unit-Tests,
+  Paper 26.1 übersetzt. Echter Test (`FRESH=1`, Rechner mit Last ~20 durch andere Server) **144/147**: Reisetor
+  Oberwelt fand den Zielplatz nicht in 25 s (Teleport kam später), dadurch Nether-Tor falsch, Tor-Flächen 1 statt 3
+  im Client – vermutlich Last, nicht die Umbenennung; Wiederholung bei weniger Last steht aus.
 
 ## Offen / nicht echt geprüft
 

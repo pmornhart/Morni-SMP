@@ -2,7 +2,7 @@
 
 @STAND.md
 
-Spielmodus „Überleben mit freiem Markt“ des MoinMorni-Netzwerks (Paper-Plugin `MorniSMP`, Java 25, Paper 26.x).
+Spielmodus „Überleben mit freiem Markt“ des Netzwerks morni.net (Paper-Plugin `MorniSMP`, Java 25, Paper 26.x).
 Kennung im Netzwerk: **`mirni`** (angezeigt „MorniSMP“). Baut seine Marktstadt selbst aus dem Code – als schwebende
 Insel in der eigenen Spawn-Welt `smp_spawn` (leer, immer Tag, geschützt) mit drei Reisetoren nach Oberwelt, Nether und
 End. Läuft im Netzwerk und auch ganz allein.
@@ -18,10 +18,10 @@ End. Läuft im Netzwerk und auch ganz allein.
 - **Keine fremden Marken, Namen, Texte, Ränge oder Grafiken** anderer Server (auch nicht von bekannten Economy-SMPs):
   nur die üblichen Mechaniken, eigene Namen, eigene Optik, eigene Bauten.
 - **Nichts für echtes Geld**, kein Pay-to-win: Taler gibt es nur im Spiel (Start, Belohnung, Ankauf, Handel).
-- Die Netzwerk-Schnittstelle `src/api/java/de/moinmorni/api/MoinMorni.java` ist eine **unveränderte Kopie** aus
-  `pmornhart/moinmorni.net` (`plugins/moinmorni-network/src/main/java/de/moinmorni/api/MoinMorni.java`). Nie hier
+- Die Netzwerk-Schnittstelle `src/api/java/net/morni/api/MorniNet.java` ist eine **unveränderte Kopie** aus
+  `pmornhart/morni.net` (`plugins/morninet-network/src/main/java/net/morni/api/MorniNet.java`). Nie hier
   ändern – ändert sie sich dort, 1:1 ersetzen. Sie wird nur mitübersetzt und kommt **nicht** in die Jar. Nur
-  `net/Connected.java` darf sie benutzen (`softdepend: [MoinMorni]`, ohne Netzwerk läuft `net/Standalone`).
+  `net/Connected.java` darf sie benutzen (`softdepend: [MorniNet]`, ohne Netzwerk läuft `net/Standalone`).
 - Geld nur über `economy/Bank` bewegen (in `Database.tx`): jede Bewegung steht im Kassenbuch, Konten werden nie
   negativ. Geld in Hundertstel-Talern (`long`).
 - Ändert sich die Marktstadt: `TownPlan.VERSION` erhöhen – dann baut sie sich beim nächsten Start neu (Stände werden

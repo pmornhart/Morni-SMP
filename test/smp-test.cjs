@@ -901,7 +901,7 @@ async function main() {
     if (cleo.currentWindow) cleo.closeWindow(cleo.currentWindow);
     cleo.quit();
     const final = await balance(anna);
-    const log = path.join(SERVER, 'plugins/MoinMorni/calls.log');
+    const log = path.join(SERVER, 'plugins/MorniNet/calls.log');
     const calls = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '').split('\n').filter(Boolean)
       .map((l) => JSON.parse(l));
     const sum = (name, key) => calls().filter((c) => c.t === 'stats' && c.mode === 'mirni' && c.name === name)

@@ -1,12 +1,12 @@
 # Morni-SMP
 
-**MorniSMP** ist der Spielmodus „Überleben mit freiem Markt“ des MoinMorni-Netzwerks (`moinmorni.net`): eine
+**MorniSMP** ist der Spielmodus „Überleben mit freiem Markt“ des Netzwerks **morni.net**: eine
 ummauerte Alpen-Marktstadt als Spawn – schwebend in einer eigenen Welt, einer Art vierter Dimension –, ein
 Auktionshaus, ein Auftragsbrett, eigene Ladenkisten, mietbare Marktstände und drei Reisetore, die per
 Zufalls-Teleport in Oberwelt, Nether und End führen. Gehandelt wird mit **Talern (₮)** – die gibt es nur im Spiel, nie für echtes
 Geld.
 
-Paper-Plugin für **Paper 26.x** (Java 25). Läuft im MoinMorni-Netzwerk (Sprache, Statistik, Zustand) und auch ganz
+Paper-Plugin für **Paper 26.x** (Java 25). Läuft im Netzwerk morni.net (Sprache, Statistik, Zustand) und auch ganz
 allein auf einem normalen Paper-Server.
 
 ## Was es kann
@@ -56,7 +56,7 @@ Umsatz des Tages.
 
 ## Netzwerk
 
-Mit dem Netzwerk-Plugin („MoinMorni“) meldet MorniSMP unter der Kennung `mirni`:
+Mit dem Netzwerk-Plugin („MorniNet“, Schnittstelle `net.morni.api.MorniNet`) meldet MorniSMP unter der Kennung `mirni`:
 
 - Statistik: `balance` (immer der aktuelle Kontostand in Hundertsteln), `sales`, `purchases`, `orders_filled`,
   `playtime_min` (hochgezählt, alle 30 s)

@@ -8,7 +8,7 @@
 #   KEEP=1 SKIP_TEST=1 test/run.sh    # nur Server starten
 #   FRESH=1 test/run.sh               # Welt und Datenbank vorher löschen
 #
-# Vorgaben für die MoinMorni-Sandbox (alles per Umgebungsvariable änderbar):
+# Vorgaben für die Sandbox von morni.net (alles per Umgebungsvariable änderbar):
 #   SMP_JAVA      Java 25 (Ordner; sonst die JDK 25 aus dem Cache, sonst JAVA_HOME)
 #   PAPER_JAR     Paper 26.1.2 (mineflayer kann bis 26.1)
 #   TEMPLATE      ein schon einmal gestarteter Paper-26.1.2-Ordner (libraries/, cache/, versions/ werden kopiert,
@@ -55,6 +55,7 @@ echo "eula=true" > "$SERVER/eula.txt"
 RCON_PASS="$(head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 20)"
 printf '%s' "$RCON_PASS" > "$SERVER/.rcon-pass"
 chmod 600 "$SERVER/.rcon-pass"
+# Fester Startwert als Zahl: jeder Lauf bekommt dieselbe Welt wie die bisherigen Testläufe.
 cat > "$SERVER/server.properties" <<EOF
 online-mode=false
 enforce-secure-profile=false
@@ -63,7 +64,7 @@ enable-rcon=true
 rcon.port=$RCON_PORT
 rcon.password=$RCON_PASS
 level-name=world
-level-seed=moinmorni
+level-seed=-1608693020
 spawn-protection=0
 view-distance=5
 simulation-distance=4
@@ -80,13 +81,14 @@ belohnung:
 zufallsteleport:
   abklingzeit-sekunden: 5
 EOF
-rm -f "$SERVER/plugins/"Morni-SMP*.jar "$SERVER/plugins/MoinMorni-FakeNetwork.jar"
+# Alte Jars weg (auch solche mit früherem Namen), damit nie zwei Fassungen laden; Via kommt unten wieder dazu.
+rm -f "$SERVER"/plugins/*.jar
 # Test-Netzwerk (NO_NETWORK=1: MorniSMP läuft allein): Cleo spricht Englisch, Meldungen landen in calls.log.
 if [ "${NO_NETWORK:-0}" != "1" ]; then
-  mkdir -p "$SERVER/plugins/MoinMorni"
-  printf 'lang.Cleo=en\n' > "$SERVER/plugins/MoinMorni/fake.properties"
-  rm -f "$SERVER/plugins/MoinMorni/calls.log"
-  cp "$REPO/test/fake-network/target/MoinMorni-FakeNetwork.jar" "$SERVER/plugins/"
+  mkdir -p "$SERVER/plugins/MorniNet"
+  printf 'lang.Cleo=en\n' > "$SERVER/plugins/MorniNet/fake.properties"
+  rm -f "$SERVER/plugins/MorniNet/calls.log"
+  cp "$REPO/test/fake-network/target/MorniNet-FakeNetwork.jar" "$SERVER/plugins/"
 fi
 cp "$REPO/target/Morni-SMP.jar" "$SERVER/plugins/"
 for jar in $EXTRA_PLUGINS; do
