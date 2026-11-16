@@ -33,7 +33,8 @@ public final class CombatTag implements Listener {
     /** Diese Befehle sind im Kampf gesperrt (alles, was wegbringt). */
     private static final Set<String> BLOCKED = Set.of("spawn", "stadt", "home", "zuhause", "tpa", "tpahere",
             "tpaccept", "tpannehmen", "back", "zurueck", "zurück", "rtp", "zufall", "wild", "reisetor", "lobby", "hub",
-            "server", "ah", "auktionshaus", "auftraege", "aufträge", "verkaufen", "ankauf", "abholen");
+            "server", "ah", "auktionshaus", "auftraege", "aufträge", "verkaufen", "ankauf", "abholen", "shop", "haendler", "händler",
+            "kaufhaus");
 
     private final Smp s;
     private final Map<UUID, Long> until = new ConcurrentHashMap<>();

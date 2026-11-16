@@ -45,6 +45,7 @@ public final class Texts {
         TextsGeneral.register();
         TextsMarket.register();
         TextsWorld.register();
+        TextsShop.register();
     }
 
     /** Alle Schlüssel (für den Test, dass jeder benutzte Text existiert). */

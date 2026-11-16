@@ -126,7 +126,7 @@ class TownPlanTest {
 
     @Test
     void triggersPointAtBlocks() {
-        assertTrue(layout.triggers().values().containsAll(Set.of("ah", "orders", "buyback", "mail")));
+        assertTrue(layout.triggers().values().containsAll(Set.of("ah", "orders", "shop", "mail")));
         for (long p : layout.triggers().keySet()) {
             String b = plan.get(Plan.x(p), Plan.y(p), Plan.z(p));
             assertNotNull(b, "Auslöser ohne Block");

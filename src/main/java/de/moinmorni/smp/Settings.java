@@ -3,12 +3,15 @@ package de.moinmorni.smp;
 import de.moinmorni.smp.economy.Money;
 import de.moinmorni.smp.market.Buyback;
 import de.moinmorni.smp.market.Fees;
+import de.moinmorni.smp.shop.Catalog;
+import de.moinmorni.smp.shop.Ware;
 import de.moinmorni.smp.teleport.SafeSpot;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -55,8 +58,12 @@ public final class Settings {
     public final long claimPrice;
     public final int claimsMax;
 
-    // Ankauf
-    public final List<Buyback.Offer> buyback;
+    // Händlerhaus (Server-Shop) und Ankauf
+    public final boolean shopEnabled;
+    public final int shopMaxSellPercent;
+    public final long shopConfirmAbove;
+    public final List<Catalog.Category> shopCategories;
+    public final List<Ware> shopWares;
     public final List<Buyback.Tier> buybackTiers;
 
     // Belohnung
@@ -122,21 +129,47 @@ public final class Settings {
         claimPrice = taler(c, "grundstuecke.preis", 250);
         claimsMax = clamp(c.getInt("grundstuecke.max", 64), 1, 10_000);
 
-        buyback = new ArrayList<>();
-        // eigene Preisliste nur, wenn sie in der config.yml steht – sonst die mitgelieferte (Werte darin haben eigene
-        // Vorgaben, die sonst von getDouble(…, 0) überdeckt würden)
-        ConfigurationSection prices = c.contains("ankauf.preise", true) || c.getDefaults() == null
-                ? c.getConfigurationSection("ankauf.preise")
-                : c.getDefaults().getConfigurationSection("ankauf.preise");
-        if (prices != null) {
-            for (String key : prices.getKeys(false)) {
-                ConfigurationSection s = prices.getConfigurationSection(key);
-                if (s == null) {
+        shopEnabled = c.getBoolean("haendler.an", true);
+        shopMaxSellPercent = clamp(c.getInt("haendler.verkauf-max-prozent", 40), 0, 90);
+        shopConfirmAbove = taler(c, "haendler.bestaetigen-ab", 250);
+        shopCategories = new ArrayList<>();
+        ConfigurationSection cats = section(c, "haendler.abteilungen");
+        if (cats != null) {
+            for (String id : keys(cats, c.contains("haendler.abteilungen", true))) {
+                ConfigurationSection s = cats.getConfigurationSection(id);
+                if (s != null) {
+                    shopCategories.add(new Catalog.Category(id.toLowerCase(Locale.ROOT),
+                            s.getString("symbol", "chest").toLowerCase(Locale.ROOT), s.getString("de", id),
+                            s.getString("en", s.getString("de", id))));
+                }
+            }
+        }
+        shopWares = new ArrayList<>();
+        ConfigurationSection wares = section(c, "haendler.waren");
+        boolean ownWares = c.contains("haendler.waren", true);
+        if (wares != null) {
+            for (String cat : keys(wares, ownWares)) {
+                ConfigurationSection inCat = wares.getConfigurationSection(cat);
+                if (inCat == null) {
                     continue;
                 }
-                String k = key.toLowerCase(Locale.ROOT);
-                buyback.add(new Buyback.Offer(k.contains(":") ? k : "minecraft:" + k,
-                        Money.ofTaler(s.getDouble("preis", 0)), Math.max(1, s.getInt("tag", 256))));
+                for (String key : keys(inCat, ownWares)) {
+                    ConfigurationSection w = inCat.getConfigurationSection(key);
+                    if (w == null) {
+                        continue;
+                    }
+                    Set<Integer> months = new java.util.TreeSet<>();
+                    for (int m : w.getIntegerList("monate")) {
+                        if (m >= 1 && m <= 12) {
+                            months.add(m);
+                        }
+                    }
+                    shopWares.add(new Ware(key, cat.toLowerCase(Locale.ROOT),
+                            Math.max(0, Money.ofTaler(w.getDouble("kauf", 0))),
+                            Math.max(0, Money.ofTaler(w.getDouble("verkauf", 0))),
+                            clamp(w.getInt("tag", 256), 1, 100_000), clamp(w.getInt("kauf-tag", 0), 0, 100_000),
+                            months));
+                }
             }
         }
         buybackTiers = new ArrayList<>();
@@ -169,6 +202,26 @@ public final class Settings {
 
     private static long taler(FileConfiguration c, String path, double fallback) {
         return Math.max(0, Money.ofTaler(c.getDouble(path, fallback)));
+    }
+
+    /**
+     * Eigener Abschnitt nur, wenn er in der config.yml steht – sonst der mitgelieferte (Werte darin haben eigene
+     * Vorgaben, die sonst von getDouble(…, 0) überdeckt würden).
+     */
+    private static ConfigurationSection section(FileConfiguration c, String path) {
+        return c.contains(path, true) || c.getDefaults() == null ? c.getConfigurationSection(path)
+                : c.getDefaults().getConfigurationSection(path);
+    }
+
+    /** Schlüssel eines Abschnitts – bei einer eigenen Liste ohne die der mitgelieferten Datei. */
+    private static java.util.Set<String> keys(ConfigurationSection sec, boolean own) {
+        java.util.Set<String> out = new java.util.LinkedHashSet<>();
+        for (String k : sec.getKeys(false)) {
+            if (!own || sec.contains(k, true)) {
+                out.add(k);
+            }
+        }
+        return out;
     }
 
     private static long hours(double h) {

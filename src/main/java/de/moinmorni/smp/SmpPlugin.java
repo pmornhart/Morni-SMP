@@ -31,6 +31,10 @@ import de.moinmorni.smp.market.ui.OrderUi;
 import de.moinmorni.smp.market.ui.ShopListener;
 import de.moinmorni.smp.market.ui.StallUi;
 import de.moinmorni.smp.net.Network;
+import de.moinmorni.smp.shop.Catalog;
+import de.moinmorni.smp.shop.ServerShop;
+import de.moinmorni.smp.shop.ui.MerchantNpc;
+import de.moinmorni.smp.shop.ui.ShopUi;
 import de.moinmorni.smp.net.Reporter;
 import de.moinmorni.smp.player.PlayerEvents;
 import de.moinmorni.smp.player.Players;
@@ -50,6 +54,7 @@ import de.moinmorni.smp.world.Protection;
 import de.moinmorni.smp.world.TownEvents;
 import de.moinmorni.smp.world.VoidGenerator;
 import org.bukkit.Difficulty;
+import org.bukkit.Material;
 import org.bukkit.GameRule;
 import org.bukkit.WorldCreator;
 import java.util.UUID;
@@ -79,6 +84,8 @@ public final class SmpPlugin extends JavaPlugin {
     private MailboxUi mailboxUi;
     private BuybackUi buybackUi;
     private StallUi stallUi;
+    private ShopUi shopUi;
+    private MerchantNpc merchant;
     private ShopListener shopListener;
     private RandomTeleport rtp;
     private Sidebar sidebar;
@@ -114,7 +121,8 @@ public final class SmpPlugin extends JavaPlugin {
         s.orders = new Orders(s.db, s.bank, s.mailbox, s.notices, s.prices, s.stats, clock, s.settings.orderFeeBp,
                 s.settings.orderDurationMs, s.settings.orderMaxActive);
         s.buyback = new Buyback(s.db, s.bank);
-        s.buyback.configure(s.settings.buyback, s.settings.buybackTiers);
+        s.shop = new ServerShop(s.db, s.bank, s.buyback);
+        configureShop();
         s.stalls = new Stalls(s.db, s.bank, clock, s.settings.stallRent);
         s.stalls.configure(s.settings.stallRent, Stalls.WEEK_MS, s.settings.stallWarnMs, s.settings.stallMaxWeeks);
         s.shops = new Shops(s.db, s.bank, s.notices, s.prices, s.stats, clock, s.settings.shopFeeBp);
@@ -140,6 +148,8 @@ public final class SmpPlugin extends JavaPlugin {
         mailboxUi = new MailboxUi(s);
         buybackUi = new BuybackUi(s);
         stallUi = new StallUi(s);
+        shopUi = new ShopUi(s);
+        merchant = new MerchantNpc(s, shopUi);
         shopListener = new ShopListener(s);
         rtp = new RandomTeleport(s);
         sidebar = new Sidebar(s);
@@ -153,6 +163,7 @@ public final class SmpPlugin extends JavaPlugin {
         pm.registerEvents(new PlayerEvents(s, this), this);
         pm.registerEvents(s.teleports, this);
         pm.registerEvents(s.combat, this);
+        pm.registerEvents(merchant, this);
 
         commands();
         spawnWorld = createSpawnWorld();
@@ -163,6 +174,8 @@ public final class SmpPlugin extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, sidebar::tick, 2 * SECOND, 2 * SECOND);
         getServer().getScheduler().runTaskTimer(this, gateDecor::particles, SECOND, SECOND / 2);
         getServer().getScheduler().runTaskTimer(this, gateDecor::repair, 10 * SECOND, 10 * SECOND);
+        getServer().getScheduler().runTaskTimer(this, merchant::repair, 5 * SECOND, 10 * SECOND);
+        getServer().getScheduler().runTaskTimer(this, merchant::tick, SECOND, SECOND / 2);
         getServer().getScheduler().runTaskTimer(this, this::everyMinute, MINUTE, MINUTE);
         getServer().getScheduler().runTaskTimer(this, this::every30s, 10 * SECOND, 30 * SECOND);
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -187,6 +200,9 @@ public final class SmpPlugin extends JavaPlugin {
         } catch (RuntimeException e) {
             getLogger().log(Level.WARNING, "Abschluss-Meldung ans Netzwerk ging nicht", e);
         }
+        if (merchant != null) {
+            merchant.remove();
+        }
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (sidebar != null) {
                 sidebar.hide(p);
@@ -207,7 +223,24 @@ public final class SmpPlugin extends JavaPlugin {
         r.add(this, "ah", (sender, args) -> auctionUi.command((Player) sender, args));
         r.add(this, "abholen", (sender, args) -> mailboxUi.open((Player) sender, 0));
         r.add(this, "auftraege", (sender, args) -> orderUi.command((Player) sender, args));
-        r.add(this, "verkaufen", (sender, args) -> buybackUi.open((Player) sender));
+        r.add(this, "verkaufen", (sender, args) -> {
+            if (!s.settings.shopEnabled) {
+                s.msg.send(sender, "merchant.off");
+                return;
+            }
+            buybackUi.open((Player) sender);
+        });
+        r.add(this, "shop", new Router.Handler() {
+            @Override
+            public void run(org.bukkit.command.CommandSender sender, String[] args) {
+                shopUi.command((Player) sender, args);
+            }
+
+            @Override
+            public java.util.List<String> tab(org.bukkit.command.CommandSender sender, String[] args) {
+                return args.length == 1 ? shopUi.tab() : java.util.List.of();
+            }
+        });
         r.add(this, "stand", (sender, args) -> stallUi.command((Player) sender, args));
         r.add(this, "gs", new ClaimCommand(s, this));
         r.add(this, "rtp", travel.rtp());
@@ -326,9 +359,20 @@ public final class SmpPlugin extends JavaPlugin {
         s.orders.configure(s.settings.orderFeeBp, s.settings.orderDurationMs, s.settings.orderMaxActive);
         s.shops.configure(s.settings.shopFeeBp);
         s.stalls.configure(s.settings.stallRent, Stalls.WEEK_MS, s.settings.stallWarnMs, s.settings.stallMaxWeeks);
-        s.buyback.configure(s.settings.buyback, s.settings.buybackTiers);
+        configureShop();
         worlds();
         s.boards.stallSigns();
+    }
+
+    /** Sortiment aus der config.yml (nur Sorten, die es als Gegenstand gibt) an Händlerhaus und Ankauf geben. */
+    private void configureShop() {
+        Catalog c = Catalog.of(s.settings.shopCategories, s.settings.shopWares, s.settings.shopMaxSellPercent, key -> {
+            Material m = Material.matchMaterial(key);
+            return m != null && m.isItem() && !m.isAir();
+        }, w -> getLogger().warning("Händlerhaus: " + w));
+        s.shop.configure(s.settings.shopEnabled ? c : Catalog.empty(), s.settings.buybackTiers);
+        getLogger().info("Händlerhaus: " + c.size() + " Waren in " + c.categories().size() + " Abteilungen"
+                + (s.settings.shopEnabled ? "" : " (geschlossen)") + ".");
     }
 
     private void everyMinute() {
@@ -381,6 +425,10 @@ public final class SmpPlugin extends JavaPlugin {
 
     public BuybackUi buybackUi() {
         return buybackUi;
+    }
+
+    public ShopUi shopUi() {
+        return shopUi;
     }
 
     public StallUi stallUi() {

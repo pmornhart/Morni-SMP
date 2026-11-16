@@ -168,21 +168,23 @@ final class TextsMarket {
     }
 
     private static void buyback() {
-        t("buyback.title", "Ankauf der Stadt", "Town buy-back");
-        t("buyback.prices", "<white>Preise heute</white>", "<white>Today's prices</white>");
-        t("buyback.price-line", "<white><item></white> <au><unit></au> <mu>(voll noch <full>)</mu>",
-                "<white><item></white> <au><unit></au> <mu>(full price for <full> more)</mu>");
-        t("buyback.tiers", "<mu>Wer mehr als die Tagesmenge bringt, bekommt weniger pro Stück.</mu>",
-                "<mu>Above the daily amount you get less per piece.</mu>");
-        t("buyback.put-in", "<mu>Lege Ernte oder Mob-Beute oben hinein</mu>", "<mu>Put crops or mob drops in above</mu>");
+        t("buyback.title", "Ankauf – Händlerhaus",
+                "Buy-back – merchant house");
+        t("buyback.prices", "<white>Preise im Händlerhaus</white>",
+                "<white>Prices at the merchant house</white>");
+        t("buyback.prices.lore", "<mu>Klick: alle Preise und Tagesmengen ansehen</mu>",
+                "<mu>Click: see all prices and daily amounts</mu>");
+        t("buyback.put-in", "<mu>Lege oben hinein, was die Händlerin ankauft</mu>",
+                "<mu>Put in above what the merchant buys</mu>");
         t("buyback.line", "<white><amount>× <item></white> <au><money></au>", "<white><amount>× <item></white> <au><money></au>");
         t("buyback.click", "<em>Klick: verkaufen</em>", "<em>Click: sell</em>");
         t("buyback.total", "<em><b>Verkaufen für <money></b></em>", "<em><b>Sell for <money></b></em>");
-        t("buyback.nothing", "<red>Davon kauft die Stadt nichts – nur Ernte und Mob-Beute.</red>",
-                "<red>The town doesn't buy that – only crops and mob drops.</red>");
-        t("buyback.sold", "<em>✔</em> <count> Sachen an die Stadt verkauft: <au>+<money></au>",
-                "<em>✔</em> Sold <count> things to the town: <au>+<money></au>");
-        t("buyback.returned", "Was die Stadt nicht kauft, hast du zurück.", "You got back what the town doesn't buy.");
+        t("buyback.nothing", "<red>Davon kauft die Händlerin nichts.</red> <mu>Was sie nimmt, steht im Händlerhaus: /shop</mu>",
+                "<red>The merchant doesn't buy any of that.</red> <mu>See what she takes: /shop</mu>");
+        t("buyback.sold", "<em>✔</em> <count> Sachen an die Händlerin verkauft: <au>+<money></au>",
+                "<em>✔</em> Sold <count> items to the merchant: <au>+<money></au>");
+        t("buyback.returned", "Was die Händlerin nicht kauft, hast du zurück.",
+                "You got back what the merchant doesn't buy.");
     }
 
     private static void shops() {

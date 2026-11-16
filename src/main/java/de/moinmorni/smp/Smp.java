@@ -50,6 +50,7 @@ public final class Smp {
     public AuctionHouse ah;
     public Orders orders;
     public Buyback buyback;
+    public de.moinmorni.smp.shop.ServerShop shop;
     public Stalls stalls;
     public Shops shops;
     public Claims claims;

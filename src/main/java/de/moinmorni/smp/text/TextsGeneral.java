@@ -248,8 +248,8 @@ final class TextsGeneral {
                 " <au>/ah</au> auction house · <au>/ah sell \\<price></au> (hand) · <au>/collect</au> mailbox");
         t("help.orders", " <au>/auftraege</au> Kaufaufträge ansehen, beliefern, aufgeben",
                 " <au>/orders</au> view, fill and place buy orders");
-        t("help.buyback", " <au>/verkaufen</au> Ernte und Mob-Beute an die Stadt verkaufen",
-                " <au>/sell</au> sell crops and mob drops to the town");
+        t("help.buyback", " <au>/verkaufen</au> Sachen hineinlegen und an die Händlerin verkaufen",
+                " <au>/sell</au> drop items in and sell them to the merchant");
         t("help.stall", " <au>/stand mieten</au> Marktstand am Marktplatz mieten (vor dem Stand stehen)",
                 " <au>/stall rent</au> rent a market stall (stand in front of it)");
         t("help.shop", " <mu>Laden:</mu> Kiste + Schild mit <au>[Laden]</au> in der ersten Zeile (eigenes Grundstück "
