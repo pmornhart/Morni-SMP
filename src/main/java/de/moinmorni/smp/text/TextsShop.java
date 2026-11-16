@@ -142,9 +142,9 @@ final class TextsShop {
         t("merchant.confirm.total", "<white>Zusammen:</white> <em><price></em>", "<white>Total:</white> <em><price></em>");
         t("merchant.unknown-category", "<red>Diese Abteilung gibt es nicht.</red> <mu>Abteilungen: <list></mu>",
                 "<red>There's no such department.</red> <mu>Departments: <list></mu>");
-        t("merchant.npc", "<au><b>Händlerin Vroni</b></au>", "<au><b>Vroni the merchant</b></au>");
-        t("merchant.npc.hint", "<white>Rechtsklick: Kaufen & Verkaufen</white>\n<mu>Right-click: buy & sell · /shop</mu>",
-                "<white>Right-click: buy & sell</white>\n<mu>Rechtsklick: Kaufen & Verkaufen · /shop</mu>");
+        t("merchant.npc.hint", "<au><b>Händlerin Vroni</b></au>\n<white>Rechtsklick: Kaufen & Verkaufen</white>\n"
+                + "<mu>Right-click: buy & sell · /shop</mu>", "<au><b>Vroni the merchant</b></au>\n"
+                + "<white>Right-click: buy & sell</white>\n<mu>Rechtsklick: Kaufen & Verkaufen · /shop</mu>");
         t("mail.reason.haendler", "<mu>gekauft im Händlerhaus</mu>", "<mu>bought at the merchant house</mu>");
         t("help.haendler", " <au>/shop</au> Händlerhaus: kaufen zu festen Preisen, verkaufen an die Händlerin",
                 " <au>/shop</au> merchant house: buy at fixed prices, sell to the merchant");

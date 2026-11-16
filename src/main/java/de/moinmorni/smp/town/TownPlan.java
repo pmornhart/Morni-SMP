@@ -479,12 +479,14 @@ public final class TownPlan {
         f.set(1, 2, 6, "decorated_pot");
         f.set(w - 2, 2, 4, "anvil[facing=" + f.r() + "]");
         f.set(w - 2, 2, 6, "decorated_pot");
-        // Tresen vorne: Bretter mit Platte, an den Enden Fässer, in der Mitte die Kasse
+        // Tresen vorne: ein Block hoch (die Händlerin ist gut zu sehen), an den Enden Fässer mit Kerzen, neben der Händlerin
+        // eine Glocke
         f.fill(3, 1, 3, 9, 1, 3, "stripped_spruce_wood[axis=y]");
-        f.fill(3, 2, 3, 9, 2, 3, "spruce_slab[type=bottom]");
         f.set(3, 1, 3, "barrel[facing=" + f.f() + "]");
         f.set(9, 1, 3, "barrel[facing=" + f.f() + "]");
-        f.set(6, 2, 3, "lectern[facing=" + f.f() + ",has_book=false]");
+        f.set(3, 2, 3, "green_candle[candles=3,lit=true]");
+        f.set(9, 2, 3, "green_candle[candles=3,lit=true]");
+        f.set(7, 2, 3, "bell[attachment=floor,facing=" + f.r() + "]");
         f.fill(2, 1, 4, 2, 1, 7, "spruce_fence");
         f.fill(10, 1, 4, 10, 1, 7, "spruce_fence");
         // Licht: Laternen am First, Kerzen am Tresen
@@ -511,9 +513,9 @@ public final class TownPlan {
         }
         f.sign(6, 5, -1, "spruce", List.of("", "<au>Händlerhaus</au>", "<mu>/shop</mu>", ""), List.of());
         trigger(f, 6, 5, -1, "shop");
-        merchant = new Layout.Spot(f.x(6, 5) + 0.5, 1, f.z(6, 5) + 0.5, yaw(f.front));
-        showcase.add(new Layout.Spot(f.x(4, 3) + 0.5, 2.95, f.z(4, 3) + 0.5, yaw(f.front)));
-        showcase.add(new Layout.Spot(f.x(8, 3) + 0.5, 2.95, f.z(8, 3) + 0.5, yaw(f.front)));
+        merchant = new Layout.Spot(f.x(6, 4) + 0.5, 1, f.z(6, 4) + 0.5, yaw(f.front));
+        showcase.add(new Layout.Spot(f.x(4, 3) + 0.5, 2.6, f.z(4, 3) + 0.5, yaw(f.front)));
+        showcase.add(new Layout.Spot(f.x(8, 3) + 0.5, 2.6, f.z(8, 3) + 0.5, yaw(f.front)));
     }
 
     /** Blickrichtung (Minecraft-Yaw) in Richtung {@code d}. */

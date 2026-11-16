@@ -40,7 +40,7 @@ dort gewesen“.
 
 ## Stand (15.11.2026)
 
-- Version 0.1.0 (Branch `claude/erster-stand`, noch nicht veröffentlicht – wartet auf Philips Go).
+- Version 0.1.0 (veröffentlicht, Release v0.1.0).
 - Unit-Tests: 45 grün (Geld atomar auch bei gleichzeitigen Überweisungen, Auktions-Kauf-Wettlauf, Treuhand der
   Aufträge inkl. gleichzeitiger Lieferungen, sinkende Ankaufspreise, Gebühren, Grundstücksregeln, sicherer Ort beim
   Zufalls-Teleport, Ablauf der Standmiete, Stadtplan inkl. drei offener Reisetore mit freiem Rückweg und nur stillem Wasser,
@@ -58,7 +58,26 @@ dort gewesen“.
   Server-Log.
 - Übersetzt gegen Paper-API 26.3 und 26.1.2.
 
+## Händlerhaus (16.11.2026, Version 0.2.0, Branch `claude/shop`, wartet auf Philips Go)
+
+- Server-Shop `/shop` (Philip: „das Beste vom Besten“): `shop/` ohne Bukkit – `Ware`, `Catalog` (Sortiment aus
+  `haendler.*`, geprüft: doppelte/unbekannte Sorten weg, Ankauf gedeckelt), `Pricing` (Ankauf ≤ 40 % und echt unter dem
+  Kaufpreis, Kosten ohne Überlauf, Tagesgrenzen), `ServerShop` (Kauf in `Database.tx` mit Tagesgrenze + `Bank.move`,
+  Kassenbuch `shop` mit „Sorte×Menge“, Verkauf über `Buyback` = Ankauf, Kassenbuch `ankauf`, Umsatz für
+  `/smpadmin shop`); Schema-Schritt 2 `shop_daily`. `shop/ui/ShopUi` (Übersicht mit 10 Abteilungen, Suche, Ankauf
+  zum Hineinlegen, Inventar verkaufen, Spieler-Markt; Abteilung mit 36 Waren/Seite; Ware-Menü mit grünem Kauf- und
+  orangem Verkaufsband, Nachfrage ab 250 ₮), `MerchantNpc` (Händlerin Vroni, Schrift darüber, zwei drehende
+  Schaustücke; nicht dauerhaft, alle 10 s geprüft). Händlerhaus ersetzt die Ankaufs-Halle (`TownPlan.VERSION` 6).
+  257 Waren, gepresste Blöcke nicht ankaufbar, Saison-Waren (`monate`).
+- Geprüft: 62 Unit-Tests (u. a. keine Geld-Schleife über ~35 Rezepte, parallele Käufe), echter Test 147/147 mit Paper
+  26.1.2 (Händlerin + Rechtsklick, Abteilung, Kauf, zu wenig Geld, Tagesgrenze, eigene Menge, Nachfrage, Verkauf, alle
+  verkaufen, Inventar verkaufen, Kontostand, `/smpadmin shop`, Englisch). Bilder mit Client 26.3 nur lokal unter
+  `~/mm-cache/bilder-smp-shop/`.
+
 ## Offen / nicht echt geprüft
+
+- Händlerhaus: Bedrock-Spieler (Truhen-Menüs, Chat-Eingabe), Preise mit echten Spielern ausbalancieren, Anbindung
+  von `haendler.*` an den Einstellungs-Katalog des Panels (Netzwerk-Repo).
 
 - Aussehen der Marktstadt, der schwebenden Insel und der Reisetore im echten Client (Bilder nur lokal) – Philip schaut
   es sich an.

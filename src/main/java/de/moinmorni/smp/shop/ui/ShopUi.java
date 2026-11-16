@@ -114,7 +114,8 @@ public final class ShopUi {
         String lang = s.msg.lang(p);
         Catalog cat = s.shop.catalog();
         Menu m = new Menu(6, s.msg.text(lang, "merchant.title"));
-        frame(m, Material.GREEN_STAINED_GLASS_PANE, Material.LIME_STAINED_GLASS_PANE);
+        frame(m, Material.GREEN_STAINED_GLASS_PANE, Material.GREEN_STAINED_GLASS_PANE);
+        background(m, Material.BLACK_STAINED_GLASS_PANE);
         m.show(4, Items.button(Material.EMERALD, s.msg.text(lang, "merchant.head"), List.of(
                 s.msg.text(lang, "merchant.head.l1"), s.msg.text(lang, "merchant.head.l2"),
                 s.msg.text(lang, "merchant.head.l3", Msg.t("count", cat.size()),
@@ -334,7 +335,9 @@ public final class ShopUi {
         Menu m = new Menu(6, Component.translatable(mat.translationKey()));
         frame(m, Material.GRAY_STAINED_GLASS_PANE, Material.GRAY_STAINED_GLASS_PANE);
         for (int i = 9; i < 45; i++) {
-            m.show(i, Items.filler(Material.LIGHT_GRAY_STAINED_GLASS_PANE));
+            Material band = i < 27 ? Material.LIME_STAINED_GLASS_PANE : i < 36 ? Material.ORANGE_STAINED_GLASS_PANE
+                    : Material.GRAY_STAINED_GLASS_PANE;
+            m.show(i, Items.filler(band));
         }
         List<Component> head = new ArrayList<>();
         priceLines(head, p, w, mat, s.buyback.soldToday(p.getUniqueId(), s.today()), lang);
@@ -349,11 +352,14 @@ public final class ShopUi {
         // Kaufen
         if (w.buyable() && w.inSeason(month())) {
             int left = s.shop.leftToday(p.getUniqueId(), w, s.today());
-            m.show(9, Items.button(Material.LIME_STAINED_GLASS_PANE, s.msg.text(lang, "merchant.buy.header"),
+            m.show(9, Items.button(Material.LIME_DYE, s.msg.text(lang, "merchant.buy.header"),
                     List.of(s.msg.text(lang, "merchant.buy.header.lore", Msg.money("price", w.buy(), lang)))));
             int[] amounts = stack >= 64 ? AMOUNTS_64 : stack > 1 ? AMOUNTS_16 : AMOUNTS_1;
             for (int i = 0; i < amounts.length; i++) {
                 int n = amounts[i];
+                if (w.buyDaily() > 0 && n > w.buyDaily()) {
+                    continue; // mehr gibt es pro Tag nie
+                }
                 ItemStack icon = new ItemStack(mat, Math.min(n, mat.getMaxStackSize()));
                 m.set(11 + i, buyButton(icon, s.msg.text(lang, "merchant.buy.button", Msg.t("amount", n)), w, n,
                         balance, room, left, lang), pl -> buy(pl, w, n, redraw));
@@ -363,6 +369,9 @@ public final class ShopUi {
             if (stack > 1) {
                 for (int i = 0; i < STACKS.length; i++) {
                     int n = STACKS[i] * stack;
+                    if (w.buyDaily() > 0 && n > w.buyDaily()) {
+                        continue;
+                    }
                     int k = STACKS[i];
                     m.set(20 + i, buyButton(new ItemStack(Material.BARREL, k), s.msg.text(lang, "merchant.buy.stacks",
                             Msg.t("stacks", k), Msg.t("amount", n)), w, n, balance, room, left, lang),
@@ -388,7 +397,7 @@ public final class ShopUi {
 
         // Verkaufen
         if (w.sellable()) {
-            m.show(27, Items.button(Material.ORANGE_STAINED_GLASS_PANE, s.msg.text(lang, "merchant.sell.header"),
+            m.show(27, Items.button(Material.ORANGE_DYE, s.msg.text(lang, "merchant.sell.header"),
                     List.of(s.msg.text(lang, "merchant.ware.sell", Msg.money("price", w.sell(), lang)))));
             int[] amounts = stack >= 64 ? AMOUNTS_64 : stack > 1 ? AMOUNTS_16 : AMOUNTS_1;
             for (int i = 0; i < amounts.length; i++) {
@@ -794,6 +803,17 @@ public final class ShopUi {
         for (int i = 0; i < 9; i++) {
             m.show(i, t);
             m.show(m.size() - 9 + i, b);
+        }
+    }
+
+    /** Leere Plätze zwischen Rahmen füllen (ruhiger Hintergrund, Knöpfe stechen heraus). */
+    private static void background(Menu m, Material pane) {
+        ItemStack f = Items.filler(pane);
+        for (int i = 9; i < m.size() - 9; i++) {
+            ItemStack there = m.getInventory().getItem(i);
+            if (there == null || there.getType().isAir()) {
+                m.show(i, f);
+            }
         }
     }
 

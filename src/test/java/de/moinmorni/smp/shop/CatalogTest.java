@@ -173,6 +173,8 @@ class CatalogTest {
         assertTrue(c.search("oak log", 11).stream().anyMatch(w -> w.id().equals("oak_log")), "englisch");
         assertTrue(c.search("eisen", 11).size() >= 5);
         assertTrue(c.search("", 11).isEmpty());
+        assertEquals("wheat", c.search("weizen", 11).get(0).id(), "genauer Treffer zuerst");
+        assertEquals("ender_chest", c.search("endertruhe", 11).get(0).id());
         assertEquals(c.wares().values().stream().filter(Ware::sellable).count(), c.sellOffers().size());
     }
 }

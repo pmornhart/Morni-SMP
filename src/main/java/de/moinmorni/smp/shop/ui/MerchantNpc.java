@@ -88,7 +88,7 @@ public final class MerchantNpc implements Listener {
         }
         keepOne(hints);
         if (hints.isEmpty()) {
-            spawnHint(at.clone().add(0, 2.55, 0));
+            spawnHint(at.clone().add(0, 2.35, 0));
         }
         if (shows.size() != s.town.layout().showcase().size()) {
             shows.forEach(Entity::remove);
@@ -130,8 +130,7 @@ public final class MerchantNpc implements Listener {
             v.setProfession(Villager.Profession.CARTOGRAPHER);
             v.setVillagerType(Villager.Type.PLAINS);
             v.setVillagerLevel(5);
-            v.customName(Texts.render("de", "merchant.npc"));
-            v.setCustomNameVisible(true);
+            // kein eigener Name: der steht schon in der Schrift darüber (sonst doppelt, wenn man sie anschaut)
         });
     }
 

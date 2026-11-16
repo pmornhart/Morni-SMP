@@ -137,7 +137,22 @@ public final class Catalog {
                 out.add(w);
             }
         }
+        // Treffer, die genau so heißen, zuerst („Weizen“ → Weizen vor Weizenkörnern), dann kürzere Namen
+        out.sort(java.util.Comparator.comparingInt((Ware w) -> rank(w.id(), terms)).thenComparingInt(w -> w.id().length()));
         return out;
+    }
+
+    private static int rank(String id, List<Set<String>> terms) {
+        String joined = id.replace('_', ' ');
+        for (Set<String> variants : terms) {
+            for (String v : variants) {
+                String t = v.replace('_', ' ').strip();
+                if (joined.equals(t)) {
+                    return 0;
+                }
+            }
+        }
+        return 1;
     }
 
     /** Was der Händler ankauft – für den Ankauf (Hineinlegen-Menü und {@code /verkaufen}). */
