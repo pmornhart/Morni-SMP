@@ -37,6 +37,12 @@ public interface Network {
     /** Zurück in die Lobby (ohne Netzwerk: Verbindung trennen mit {@code message}). */
     void toLobby(Player player, Component message);
 
+    /**
+     * Spielt der Spieler gerade (MorniSMP: im Kampf)? Solange fragt „/lobby“ im Netzwerk erst nach. Ohne Netzwerk oder
+     * mit einem älteren Netzwerk-Plugin: nichts.
+     */
+    void playing(Player player, boolean playing);
+
     /** Ist der Hub gerade verbunden? (nur dann kommen Statistiken an) */
     boolean hubOnline();
 
@@ -45,7 +51,7 @@ public interface Network {
         Logger log = plugin.getLogger();
         if (plugin.getServer().getPluginManager().getPlugin("MoinMorni") != null) {
             try {
-                Network n = Connected.create();
+                Network n = Connected.create(log);
                 if (n != null) {
                     return n;
                 }

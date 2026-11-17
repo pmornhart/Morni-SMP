@@ -54,6 +54,10 @@ class ReporterTest {
         }
 
         @Override
+        public void playing(Player player, boolean playing) {
+        }
+
+        @Override
         public boolean hubOnline() {
             return hub;
         }

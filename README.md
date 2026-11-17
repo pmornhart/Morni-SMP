@@ -29,7 +29,7 @@ allein auf einem normalen Paper-Server.
 | Kopfgeld | `/kopfgeld [spieler betrag]` | Geld liegt in der Treuhand, wer das Ziel besiegt, bekommt alles. |
 | Belohnung | `/belohnung` | Einmal am Tag (nach 15 Min. Spielzeit), Serie bis 7 Tage. |
 | Anzeige | `/leiste`, `/smp` | Leiste rechts (Geld, Ort, Kampf, Abholfach), Hilfe. |
-| Team | `/smpadmin [geld\|bau\|stadt\|neuladen\|stand\|gs\|info\|shop]` | Recht `morni.smp.admin` (oder OP). |
+| Team | `/smpadmin [geld\|bau\|stadt\|neuladen\|stand\|gs\|info\|shop]` | Recht `morni.smp.admin` (oder OP). `/smpadmin geld [geben\|nehmen\|setzen] [spieler] <betrag>` – ohne Spieler für einen selbst (`/smpadmin geld 5000` zum Testen). |
 
 Alle Menüs sind Truhen-Menüs mit einfachen Klicks – das geht auch für Bedrock-Spieler (über Geyser).
 
@@ -61,6 +61,9 @@ Mit dem Netzwerk-Plugin („MoinMorni“) meldet MorniSMP unter der Kennung `mir
 - Statistik: `balance` (immer der aktuelle Kontostand in Hundertsteln), `sales`, `purchases`, `orders_filled`,
   `playtime_min` (hochgezählt, alle 30 s)
 - Zustand: `running` (bzw. `starting`, während die Stadt gebaut wird) mit Spielerzahl
+- „Spielt gerade“ (ab Schnittstelle 2), solange jemand im Kampf markiert ist: Dann fragt „/lobby“ erst nach – wer im
+  Kampf geht, verliert seine Sachen. Sonst landet man beim Wiederkommen ohnehin dort, wo man war (kein Platz
+  freizuhalten). Mit einem älteren Netzwerk-Plugin läuft alles wie bisher.
 
 Ohne Netzwerk: alles auf Deutsch, keine Statistik nach außen.
 
