@@ -108,7 +108,11 @@ dort gewesen“.
   Südseite des Händlerhauses, `TownPlan.VERSION` 7), `command/ExchangeAdmin` (`/smpadmin boerse`).
 - `shop/PriceList`: bestehende Server mit unveränderter 0.2.0-Warenliste bekommen die neue Liste (Fingerabdruck);
   eigene Listen bleiben.
-- Geprüft: 89 Unit-Tests (JUnit 6.1.3), `-Ppaper-26.1 compile`, echter Test siehe unten.
+- Geprüft: 89 Unit-Tests (JUnit 6.1.3), `-Ppaper-26.1 compile` (auch nach dem Merge von 0.2.1). Echter Test
+  (`test/run.sh`, Paper 26.1.2, erweitert um Erzpreise, Börse, `/wert`, `/verkaufen`, Kurstafel, `LANGSAM`) vor dem
+  Merge **174/175** – rot nur die Kurstafel-Prüfung (Text abgeschnitten gelesen; Prüfung seitdem mit Wiederholung).
+  Nach dem Merge brach der Lauf bei 52/61 ab: der Speicherwächter der Sandbox beendete den Test-Server (Rechner voll
+  mit anderen Helfern). **Offen:** voller grüner Lauf nach dem Merge, Bilder mit echtem Client 26.3.
 
 ## Offen / nicht echt geprüft
 
