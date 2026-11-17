@@ -62,14 +62,17 @@ public final class QuickSell {
         Ware w = plain && s.settings.shopEnabled ? s.shop.catalog().ware(hand.getType().getKey().toString()) : null;
         if (w != null) {
             ServerShop.Price pr = s.shop.price(w);
+            // der Kurs wirkt nur nach oben auf den Kaufpreis und nur nach unten auf den Ankauf
+            int trend = Sparkline.trend(pr.factor());
             Component rate = rate(lang, pr.factor());
             if (w.buyable()) {
-                s.msg.line(p, "worth.buy", Msg.money("price", pr.buy(), lang), Msg.c("rate", rate));
+                s.msg.line(p, "worth.buy", Msg.money("price", pr.buy(), lang),
+                        Msg.c("rate", trend > 0 ? rate : Component.empty()));
             }
             if (w.sellable()) {
                 long total = s.shop.quoteSell(p.getUniqueId(), w.key(), amount, s.today()).total();
                 s.msg.line(p, "worth.sell", Msg.money("price", pr.sell(), lang), Msg.t("amount", amount),
-                        Msg.money("total", total, lang), Msg.c("rate", rate));
+                        Msg.money("total", total, lang), Msg.c("rate", trend < 0 ? rate : Component.empty()));
             } else {
                 s.msg.line(p, "worth.no-sell");
             }

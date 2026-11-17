@@ -16,7 +16,6 @@ import de.moinmorni.smp.ui.Items;
 import de.moinmorni.smp.ui.Menu;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.OptionalLong;
 import java.util.function.IntConsumer;
 import net.kyori.adventure.text.Component;
@@ -80,8 +79,9 @@ public final class ExchangeUi {
             no(p);
             return;
         }
-        if (found.size() == 1 || found.get(0).id().equals(query.toLowerCase(Locale.ROOT).replace(' ', '_'))) {
-            detail(p, found.get(0), false, () -> main(p));
+        Ware exact = found.size() == 1 ? found.get(0) : s.shop.catalog().exact(query, month());
+        if (exact != null) {
+            detail(p, exact, false, () -> main(p));
             return;
         }
         String shown = query.length() > 20 ? query.substring(0, 20) + "…" : query;

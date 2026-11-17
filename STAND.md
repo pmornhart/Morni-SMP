@@ -74,6 +74,25 @@ dort gewesen“.
   verkaufen, Inventar verkaufen, Kontostand, `/smpadmin shop`, Englisch). Bilder mit Client 26.3 nur lokal unter
   `~/mm-cache/bilder-smp-shop/`.
 
+## Kostbare Erze und Börse (16.11.2026, Version 0.3.0, Branch `claude/erz-preise`, wartet auf Philips Go)
+
+- Philip: „Preise für Erze geisteskrank anheben“ und „Marktsystem genau wie bei OP SMP“ (Video nicht ansehbar –
+  Recherche zu OPSMP/OPSUCHT/Economy-SMPs im Scratchpad des Koordinators, `smp-markt-recherche.md`).
+- Erze ×10 (Kohle, Kupfer) / ×15–20 (Eisen, Gold, Lapis, Redstone, Quarz) / ×40 (Diamant, Smaragd) / ×50
+  (Antiker Schutt, Netherit), Kauf und Ankauf; Blöcke, Werkzeug, Rüstung, Redstone-Technik, Goldäpfel … mindestens zum
+  Erzwert. Smaragde kauft Vroni nicht mehr an. `haendler.faktoren.<abteilung>` multipliziert eine ganze Abteilung.
+- `shop/Recipes` (über 200 Umwege: Werkbank, Ofen, Abbauen) + `shop/LoopGuard` (billigster Weg zu jeder Sorte):
+  `Catalog.of` senkt jeden Ankaufspreis, der eine Geld-Schleife öffnen würde (Hinweis im Log). Dorfbewohner nur im
+  Test (`VillagerTradeTest`: Umwege über Kleriker, Kettenrüstung … höchstens ~2.700 ₮ pro Spieler und Tag, endlich).
+- Börse: `shop/Course` (rein: Druck in Tagesmengen, `2^(Druck/halbieren-nach)`, Grenzen, Halbwertszeit; Kauf =
+  Grundpreis × max(1, Kurs), Ankauf = Grundpreis × min(1, Kurs)), `shop/Courses` (Tabellen `courses` + `course_log`,
+  Schema-Schritt 3, Verlauf stündlich, 30 Tage), Anbindung in `ServerShop` und `Buyback.Market`. `shop/ui/ExchangeUi`
+  (`/boerse`), `shop/ui/QuickSell` (`/wert`, `/verkaufen hand|alles`), `town/ExchangeBoard` (Kurstafel an der
+  Südseite des Händlerhauses, `TownPlan.VERSION` 7), `command/ExchangeAdmin` (`/smpadmin boerse`).
+- `shop/PriceList`: bestehende Server mit unveränderter 0.2.0-Warenliste bekommen die neue Liste (Fingerabdruck);
+  eigene Listen bleiben.
+- Geprüft: 89 Unit-Tests (JUnit 6.1.3), `-Ppaper-26.1 compile`, echter Test siehe unten.
+
 ## Offen / nicht echt geprüft
 
 - Händlerhaus: Bedrock-Spieler (Truhen-Menüs, Chat-Eingabe), Preise mit echten Spielern ausbalancieren, Anbindung

@@ -192,6 +192,17 @@ public final class Catalog {
         return out;
     }
 
+    /** Die Ware, die genau so heißt (deutsch oder englisch, z. B. „diamant“ → Diamant), oder null. */
+    public Ware exact(String query, int month) {
+        List<Set<String>> terms = SearchWords.terms(query);
+        for (Ware w : search(query, month)) {
+            if (rank(w.id(), terms) == 0) {
+                return w;
+            }
+        }
+        return null;
+    }
+
     private static int rank(String id, List<Set<String>> terms) {
         String joined = id.replace('_', ' ');
         for (Set<String> variants : terms) {

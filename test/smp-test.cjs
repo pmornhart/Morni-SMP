@@ -977,10 +977,16 @@ async function main() {
   check('Gekauft zum Kurs: 1 Goldbarren für 300 ₮', sees(dora, /Gekauft: 1× .*300 ₮/), last(dora, /Gekauft/));
   void gws;
   if (dora.currentWindow) dora.closeWindow(dora.currentWindow);
-  const board3 = (await cmd('execute in minecraft:smp_spawn run data get entity '
-    + '@e[type=text_display,tag=morni_smp_exchange,limit=1] text')).join(' ');
-  check('Kurstafel am Händlerhaus: Börse, Gold ▲50 %, Diamant ▼6 %', /Börse · Exchange/.test(board3)
-    && /▲50%/.test(board3) && /▼6%/.test(board3) && /item\.minecraft\.diamond/.test(board3), board3.slice(0, 300));
+  // Die Tafel schreibt sich alle 30 s neu (und gleich nach /smpadmin boerse setzen)
+  let board3 = '';
+  const boardOk = () => /Börse · Exchange/.test(board3) && /▲50%/.test(board3) && /▼6%/.test(board3)
+    && /item\.minecraft\.diamond/.test(board3);
+  await waitFor(async () => {
+    board3 = (await cmd('execute in minecraft:smp_spawn run data get entity '
+      + '@e[type=text_display,tag=morni_smp_exchange,limit=1] text')).join(' ');
+    return boardOk();
+  }, 15000, 2000);
+  check('Kurstafel am Händlerhaus: Börse, Gold ▲50 %, Diamant ▼6 %', boardOk(), board3.slice(0, 1800));
   const boardPos = (await cmd('execute in minecraft:smp_spawn run data get entity '
     + '@e[type=text_display,tag=morni_smp_exchange,limit=1] Pos')).join(' ');
   check('Kurstafel steht vor der Holztafel an der Straße (z ≈ −4)', /,\s*-3\.9\dd?/.test(boardPos), boardPos);
