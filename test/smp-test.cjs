@@ -1011,9 +1011,20 @@ async function main() {
   let board3 = '';
   const boardOk = () => /Börse · Exchange/.test(board3) && /▲50%/.test(board3) && /▼6%/.test(board3)
     && /item\.minecraft\.diamond/.test(board3);
+  // „data get“ kürzt lange Listen mit „...“ – darum Teil für Teil lesen
+  const boardText = async () => {
+    const asks = Array.from({ length: 160 }, (_, i) => 'execute in minecraft:smp_spawn run data get entity '
+      + `@e[type=text_display,tag=morni_smp_exchange,limit=1] text.extra[${i}]`);
+    const parts = [];
+    for (const r of await cmd(...asks)) {
+      const m = String(r).match(/entity data: ([\s\S]*)$/);
+      if (!m) break;
+      parts.push(m[1]);
+    }
+    return parts.join(' ');
+  };
   await waitFor(async () => {
-    board3 = (await cmd('execute in minecraft:smp_spawn run data get entity '
-      + '@e[type=text_display,tag=morni_smp_exchange,limit=1] text')).join(' ');
+    board3 = await boardText();
     return boardOk();
   }, 15000, 2000);
   check('Kurstafel am Händlerhaus: Börse, Gold ▲50 %, Diamant ▼6 %', boardOk(), board3.slice(0, 1800));
