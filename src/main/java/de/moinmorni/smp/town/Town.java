@@ -164,6 +164,12 @@ public final class Town {
         return new Location(world, layout.spawnX(), ground + layout.spawnY(), layout.spawnZ(), layout.spawnYaw(), 0f);
     }
 
+    /** Kurstafel der Börse: Mitte unten der Schrift, Blick der Schrift. */
+    public Location exchange() {
+        Layout.Spot sp = layout.exchange();
+        return new Location(world, sp.x(), ground + sp.y(), sp.z(), sp.yaw(), 0f);
+    }
+
     public Location board() {
         return new Location(world, layout.boardX(), ground + layout.boardY(), layout.boardZ());
     }

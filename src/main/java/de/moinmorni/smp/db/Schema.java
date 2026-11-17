@@ -199,6 +199,23 @@ final class Schema {
               bought INTEGER NOT NULL CHECK (bought >= 0),
               PRIMARY KEY (uuid, day, item_key));
             CREATE INDEX ledger_reason ON ledger(reason, time);
+            """,
+            // 3: Börse – Kurs (Druck) je Ware und stündlicher Verlauf
+            """
+            CREATE TABLE courses(
+              item_key TEXT PRIMARY KEY,
+              pressure REAL NOT NULL,
+              updated INTEGER NOT NULL);
+
+            CREATE TABLE course_log(
+              item_key TEXT NOT NULL,
+              hour INTEGER NOT NULL,
+              pressure REAL NOT NULL,
+              updated INTEGER NOT NULL,
+              bought INTEGER NOT NULL DEFAULT 0,
+              sold INTEGER NOT NULL DEFAULT 0,
+              PRIMARY KEY (item_key, hour));
+            CREATE INDEX course_log_hour ON course_log(hour);
             """);
 
     static void migrate(Database db) {

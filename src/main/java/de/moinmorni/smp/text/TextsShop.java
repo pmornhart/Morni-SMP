@@ -120,6 +120,8 @@ final class TextsShop {
                 "<red>You can't afford that – you're short <missing>.</red>");
         t("merchant.no-room", "<red>So viel passt nicht in dein Inventar (Platz für <room>).</red>",
                 "<red>That doesn't fit in your inventory (room for <room>).</red>");
+        t("merchant.price-changed", "<red>Der Kurs ist gerade gestiegen – jetzt <price>.</red> <mu>Schau noch mal und kauf neu.</mu>",
+                "<red>The rate just went up – now <price>.</red> <mu>Have another look and buy again.</mu>");
         t("merchant.limit", "<red>Davon gibt's heute nur noch <left> für dich – morgen wieder mehr.</red>",
                 "<red>Only <left> more of that for you today – more tomorrow.</red>");
         t("merchant.not-enough", "<red>Du hast nur <count> davon.</red>", "<red>You only have <count> of those.</red>");

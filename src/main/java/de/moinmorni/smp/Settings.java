@@ -4,6 +4,7 @@ import de.moinmorni.smp.economy.Money;
 import de.moinmorni.smp.market.Buyback;
 import de.moinmorni.smp.market.Fees;
 import de.moinmorni.smp.shop.Catalog;
+import de.moinmorni.smp.shop.Course;
 import de.moinmorni.smp.shop.Ware;
 import de.moinmorni.smp.teleport.SafeSpot;
 import java.time.ZoneId;
@@ -65,6 +66,10 @@ public final class Settings {
     public final List<Catalog.Category> shopCategories;
     public final List<Ware> shopWares;
     public final List<Buyback.Tier> buybackTiers;
+    /** Preis-Faktor je Abteilung ({@code haendler.faktoren}). */
+    public final Map<String, Double> shopFactors;
+    /** Börse: Kurse nach Angebot und Nachfrage ({@code boerse.*}). */
+    public final Course.Rules courseRules;
 
     // Belohnung
     public final int rewardMinMinutes;
@@ -172,6 +177,20 @@ public final class Settings {
                 }
             }
         }
+        Map<String, Double> factors = new java.util.LinkedHashMap<>();
+        ConfigurationSection fs = c.getConfigurationSection("haendler.faktoren");
+        if (fs != null) {
+            for (String id : fs.getKeys(false)) {
+                double f = fs.getDouble(id, 1.0);
+                if (Double.isFinite(f) && f > 0) {
+                    factors.put(id.toLowerCase(Locale.ROOT), Math.max(0.05, Math.min(100, f)));
+                }
+            }
+        }
+        shopFactors = Map.copyOf(factors);
+        courseRules = new Course.Rules(c.getBoolean("boerse.an", true), c.getDouble("boerse.halbieren-nach", 4),
+                c.getDouble("boerse.erholung-stunden", 6), c.getInt("boerse.min-prozent", 25),
+                c.getInt("boerse.max-prozent", 300));
         buybackTiers = new ArrayList<>();
         for (Map<?, ?> m : c.getMapList("ankauf.stufen")) {
             Object from = m.get("ab");

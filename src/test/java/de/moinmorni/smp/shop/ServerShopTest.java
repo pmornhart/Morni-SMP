@@ -29,9 +29,11 @@ class ServerShopTest {
     private final TestClock clock = new TestClock();
     private final Database db = Database.memory();
     private final Bank bank = new Bank(db, clock, 0);
-    private final ServerShop shop = new ServerShop(db, bank, new Buyback(db, bank));
+    private final Courses courses = new Courses(db, clock);
+    private final ServerShop shop = new ServerShop(db, bank, new Buyback(db, bank), courses);
 
     ServerShopTest() {
+        courses.configure(Course.Rules.OFF); // feste Preise – die Börse hat eigene Tests
         Catalog c = Catalog.of(List.of(new Catalog.Category("essen", "bread", "Essen", "Food"),
                         new Catalog.Category("erze", "diamond", "Erze", "Ores")),
                 List.of(new Ware("wheat", "essen", 150, 50, 100, 0, Set.of()),
@@ -196,5 +198,74 @@ class ServerShopTest {
         assertEquals(10, t.top().get(0).bought());
         assertEquals(4, t.top().get(0).sold());
         assertEquals(0, shop.turnover(clock.getAsLong() + 1).purchases(), "nur ab dem Zeitpunkt");
+    }
+
+    // ---------------------------------------------------------------- Börse
+
+    @Test
+    void sellingLowersWhatVroniPaysAndBuyingRaisesWhatSheCharges() {
+        courses.configure(new Course.Rules(true, 4, 6, 25, 300));
+        UUID a = player("Anna", 10_000_000);
+        bank.deposit(UUID.nameUUIDFromBytes("x".getBytes(StandardCharsets.UTF_8)), 0, "test", null);
+        // Diamant: Tagesmenge 16, Ankauf 20 ₮
+        ServerShop.Deal first = shop.sell(a, "minecraft:diamond", 16, DAY);
+        assertEquals(16 * 2_000, first.total(), "erster Verkauf zum Grundpreis");
+        Ware d = shop.catalog().ware("minecraft:diamond");
+        ServerShop.Price after = shop.price(d);
+        assertTrue(after.sell() < 2_000, "danach zahlt Vroni weniger: " + after.sell());
+        assertEquals(8_000, after.buy(), "verlangt aber nicht weniger");
+        assertTrue(after.percent() < 100);
+        // Weizen kaufen hebt den Preis (Tagesmenge 100)
+        ServerShop.Deal b1 = shop.buy(a, "minecraft:wheat", 200, DAY, 11);
+        assertEquals(200 * 150, b1.total(), "zum Grundpreis");
+        ServerShop.Price wheat = shop.price(shop.catalog().ware("minecraft:wheat"));
+        assertTrue(wheat.buy() > 150, "teurer: " + wheat.buy());
+        assertEquals(50, wheat.sell(), "zahlt aber nicht mehr");
+        ServerShop.Deal b2 = shop.buy(a, "minecraft:wheat", 10, DAY, 11);
+        assertEquals(10 * wheat.buy(), b2.total(), "Preis von jetzt");
+        // Erholung
+        clock.advance(48 * 3_600_000L);
+        assertEquals(100, shop.price(d).percent(), "nach zwei Tagen wieder beim Grundpreis");
+    }
+
+    @Test
+    void shownPriceProtectsTheBuyer() {
+        courses.configure(new Course.Rules(true, 4, 6, 25, 300));
+        UUID a = player("Anna", 1_000_000);
+        UUID b = player("Bert", 1_000_000);
+        long shown = 50 * 150;
+        shop.buy(b, "minecraft:wheat", 300, DAY, 11); // Bert treibt den Preis hoch
+        ServerShop.Deal d = shop.buy(a, "minecraft:wheat", 50, DAY, 11, shown);
+        assertEquals(ServerShop.Status.PRICE_CHANGED, d.status());
+        assertEquals(1_000_000, bank.balance(a), "nichts abgebucht");
+    }
+
+    /**
+     * Über die Zeit kein Gewinn beim Händler: egal wann gekauft und wann verkauft wird, ein Ankauf bringt nie mehr, als
+     * ein Kauf gekostet hätte (200 zufällige Handelstage).
+     */
+    @Test
+    void buyLowSellHighNeverWorksAtTheMerchant() {
+        courses.configure(new Course.Rules(true, 2, 3, 10, 500));
+        UUID a = player("Anna", 100_000_000);
+        java.util.Random rnd = new java.util.Random(99);
+        long minBuy = Long.MAX_VALUE;
+        long maxSell = 0;
+        for (int i = 0; i < 200; i++) {
+            if (rnd.nextBoolean()) {
+                ServerShop.Deal d = shop.buy(a, "minecraft:wheat", 1 + rnd.nextInt(300), DAY, 11);
+                if (d.ok()) {
+                    minBuy = Math.min(minBuy, d.total() / d.amount());
+                }
+            } else {
+                ServerShop.Deal d = shop.sell(a, "minecraft:wheat", 1 + rnd.nextInt(100), "2026-11-" + (10 + i % 15));
+                if (d.ok() && d.total() > 0) {
+                    maxSell = Math.max(maxSell, (d.total() + d.amount() - 1) / d.amount());
+                }
+            }
+            clock.advance(rnd.nextInt(8) * 3_600_000L);
+        }
+        assertTrue(maxSell < minBuy, "höchster Ankauf " + maxSell + " < billigster Kauf " + minBuy);
+        assertTrue(minBuy >= 150 && maxSell <= 50);
     }
 }

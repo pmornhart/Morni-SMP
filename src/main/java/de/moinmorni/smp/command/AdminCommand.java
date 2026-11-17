@@ -22,7 +22,8 @@ import org.bukkit.entity.Player;
  */
 public final class AdminCommand implements Router.Handler {
 
-    private static final List<String> SUBS = List.of("geld", "bau", "stadt", "neuladen", "stand", "gs", "info", "shop");
+    private static final List<String> SUBS = List.of("geld", "bau", "stadt", "neuladen", "stand", "gs", "info", "shop",
+            "boerse");
     private static final java.util.Set<String> MONEY_ACTIONS = java.util.Set.of("geben", "give", "nehmen", "take",
             "setzen", "set");
 
@@ -34,7 +35,10 @@ public final class AdminCommand implements Router.Handler {
         this.s = s;
         this.plugin = plugin;
         this.money = money;
+        this.exchange = new ExchangeAdmin(s);
     }
+
+    private final ExchangeAdmin exchange;
 
     @Override
     public boolean playersOnly() {
@@ -64,9 +68,10 @@ public final class AdminCommand implements Router.Handler {
             case "gs", "claim" -> claim(sender);
             case "info" -> info(sender);
             case "shop", "haendler" -> shop(sender);
+            case "boerse", "börse", "exchange" -> exchange.run(sender, args);
             default -> {
                 s.msg.send(sender, "admin.help.title");
-                for (String k : new String[] {"geld", "bau", "stadt", "neuladen", "stand", "gs", "info", "shop"}) {
+                for (String k : new String[] {"geld", "bau", "stadt", "neuladen", "stand", "gs", "info", "shop", "boerse"}) {
                     s.msg.line(sender, "admin.help." + k);
                 }
             }
@@ -82,6 +87,9 @@ public final class AdminCommand implements Router.Handler {
             return SUBS;
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
+        if (sub.equals("boerse")) {
+            return exchange.tab(args);
+        }
         if (args.length == 2) {
             return switch (sub) {
                 case "geld" -> {

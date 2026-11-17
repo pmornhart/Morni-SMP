@@ -30,7 +30,17 @@ public final class ServerShop {
 
     /** Ergebnis. */
     public enum Status {
-        OK, UNKNOWN, NOT_FOR_SALE, NOT_BOUGHT, OFF_SEASON, BAD_AMOUNT, LIMIT, NOT_ENOUGH
+        OK, UNKNOWN, NOT_FOR_SALE, NOT_BOUGHT, OFF_SEASON, BAD_AMOUNT, LIMIT, NOT_ENOUGH, PRICE_CHANGED
+    }
+
+    /**
+     * Preise einer Ware jetzt: {@code buy} verlangt der Händler, {@code sell} zahlt er (pro Stück, Hundertstel, mit Kurs;
+     * ohne Tagesstufen), {@code factor} der Kurs (1 = Grundpreis).
+     */
+    public record Price(long buy, long sell, double factor) {
+        public int percent() {
+            return Course.percent(factor);
+        }
     }
 
     /**
@@ -55,18 +65,42 @@ public final class ServerShop {
     private final Database db;
     private final Bank bank;
     private final Buyback buyback;
+    private final Courses courses;
     private volatile Catalog catalog = Catalog.empty();
 
-    public ServerShop(Database db, Bank bank, Buyback buyback) {
+    public ServerShop(Database db, Bank bank, Buyback buyback, Courses courses) {
         this.db = db;
         this.bank = bank;
         this.buyback = buyback;
+        this.courses = courses;
+        buyback.market(new Buyback.Market() {
+            @Override
+            public long unitPrice(Buyback.Offer o) {
+                return Course.sellPrice(o.unitPrice(), courses.factor(o.key()));
+            }
+
+            @Override
+            public void sold(Connection c, String key, int amount) throws SQLException {
+                Ware w = catalog.ware(key);
+                courses.record(c, key, amount, w == null ? Buyback.DEFAULT_DAILY : w.daily(), false);
+            }
+        });
     }
 
     /** Neues Sortiment; der Ankauf übernimmt die Ankaufspreise daraus. */
     public void configure(Catalog c, List<Buyback.Tier> tiers) {
         this.catalog = c;
         buyback.configure(c.sellOffers(), tiers);
+    }
+
+    public Courses courses() {
+        return courses;
+    }
+
+    /** Preise einer Ware jetzt (mit Kurs). */
+    public Price price(Ware w) {
+        double f = courses.factor(w.key());
+        return new Price(Course.buyPrice(w.buy(), f), w.sellable() ? Course.sellPrice(w.sell(), f) : 0, f);
     }
 
     public Catalog catalog() {
@@ -95,11 +129,17 @@ public final class ServerShop {
         return Pricing.leftToday(w.buyDaily(), boughtToday(who, w.key(), day));
     }
 
-    /**
-     * Kaufen: {@code amount} Stück von {@code key} für {@code amount × Preis}. Prüft Sortiment, Saison
-     * ({@code month} 1–12), Menge, Tagesgrenze und Geld – alles in einem Auftrag.
-     */
+    /** Kaufen ohne Preisgrenze. */
     public Deal buy(UUID who, String key, int amount, String day, int month) {
+        return buy(who, key, amount, day, month, 0);
+    }
+
+    /**
+     * Kaufen: {@code amount} Stück von {@code key} zum Preis jetzt (mit Kurs). Prüft Sortiment, Saison
+     * ({@code month} 1–12), Menge, Tagesgrenze und Geld – alles in einem Auftrag. {@code maxTotal} &gt; 0: teurer als
+     * gezeigt wird nicht gekauft ({@link Status#PRICE_CHANGED}), falls der Kurs inzwischen gestiegen ist.
+     */
+    public Deal buy(UUID who, String key, int amount, String day, int month, long maxTotal) {
         Ware w = catalog.ware(key);
         if (w == null) {
             return new Deal(Status.UNKNOWN, null, amount, 0, 0);
@@ -110,12 +150,20 @@ public final class ServerShop {
         if (!w.inSeason(month)) {
             return new Deal(Status.OFF_SEASON, w, amount, 0, 0);
         }
-        long total = Pricing.cost(w.buy(), amount);
-        if (!Pricing.validAmount(amount) || total < 0) {
+        if (!Pricing.validAmount(amount) || Pricing.cost(price(w).buy(), amount) < 0) {
             return new Deal(Status.BAD_AMOUNT, w, amount, 0, 0);
         }
+        long[] shown = {0};
         try {
             return db.tx(c -> {
+                long total = Pricing.cost(price(w).buy(), amount);
+                shown[0] = total;
+                if (total < 0) {
+                    return new Deal(Status.BAD_AMOUNT, w, amount, 0, 0);
+                }
+                if (maxTotal > 0 && total > maxTotal) {
+                    return new Deal(Status.PRICE_CHANGED, w, amount, total, 0);
+                }
                 int left = Pricing.leftToday(w.buyDaily(), w.buyDaily() > 0 ? boughtToday(c, who, w.key(), day) : 0);
                 if (amount > left) {
                     return new Deal(Status.LIMIT, w, amount, total, left);
@@ -125,14 +173,18 @@ public final class ServerShop {
                         who, day, w.key(), amount);
                 Database.update(c, "DELETE FROM shop_daily WHERE day < ?", day);
                 bank.move(c, who.toString(), Bank.SERVER, total, REASON_BUY, ref(w.key(), amount));
+                courses.record(c, w.key(), amount, w.daily(), true);
                 return new Deal(Status.OK, w, amount, total,
                         left == Integer.MAX_VALUE ? left : left - amount);
             });
         } catch (Abort a) {
             if (a.reason() == Bank.Result.NOT_ENOUGH) {
-                return new Deal(Status.NOT_ENOUGH, w, amount, total, 0);
+                return new Deal(Status.NOT_ENOUGH, w, amount, shown[0], 0);
             }
             throw a;
+        } catch (RuntimeException e) {
+            courses.reload(); // der Speicher könnte schon den neuen Kurs haben
+            throw e;
         }
     }
 
@@ -160,7 +212,13 @@ public final class ServerShop {
         if (!Pricing.validAmount(amount)) {
             return new Deal(Status.BAD_AMOUNT, w, amount, 0, 0);
         }
-        Buyback.Quote q = buyback.sell(who, Map.of(w.key(), amount), day);
+        Buyback.Quote q;
+        try {
+            q = buyback.sell(who, Map.of(w.key(), amount), day);
+        } catch (RuntimeException e) {
+            courses.reload();
+            throw e;
+        }
         return new Deal(Status.OK, w, amount, q.total(), 0);
     }
 

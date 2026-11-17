@@ -249,6 +249,13 @@ public final class AuctionHouse {
         return db.tx(c -> Database.query(c, sql.toString(), AuctionHouse::row, args.toArray()));
     }
 
+    /** Aktive Angebote genau dieser Sorte, billigstes Stück zuerst (für {@code /wert} und die Börse). */
+    public List<Listing> cheapest(String itemKey, int limit) {
+        return db.tx(c -> Database.query(c, "SELECT " + COLUMNS + " FROM listings WHERE state = ? AND expires > ? "
+                + "AND item_key = ? ORDER BY CAST(price AS REAL) / amount ASC, id ASC LIMIT ?", AuctionHouse::row,
+                ACTIVE, clock.getAsLong(), itemKey, limit));
+    }
+
     /** Wie viele Treffer {@link #browse} insgesamt hätte (für die Seitenzahl). */
     public int count(Category category, String search) {
         List<Object> args = new ArrayList<>();

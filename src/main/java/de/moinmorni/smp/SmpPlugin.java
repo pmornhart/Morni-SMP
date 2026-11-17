@@ -32,9 +32,14 @@ import de.moinmorni.smp.market.ui.ShopListener;
 import de.moinmorni.smp.market.ui.StallUi;
 import de.moinmorni.smp.net.Network;
 import de.moinmorni.smp.shop.Catalog;
+import de.moinmorni.smp.shop.Courses;
+import de.moinmorni.smp.shop.PriceList;
 import de.moinmorni.smp.shop.ServerShop;
+import de.moinmorni.smp.shop.ui.ExchangeUi;
 import de.moinmorni.smp.shop.ui.MerchantNpc;
+import de.moinmorni.smp.shop.ui.QuickSell;
 import de.moinmorni.smp.shop.ui.ShopUi;
+import de.moinmorni.smp.town.ExchangeBoard;
 import de.moinmorni.smp.net.Reporter;
 import de.moinmorni.smp.player.PlayerEvents;
 import de.moinmorni.smp.player.Players;
@@ -85,6 +90,10 @@ public final class SmpPlugin extends JavaPlugin {
     private BuybackUi buybackUi;
     private StallUi stallUi;
     private ShopUi shopUi;
+    private ExchangeUi exchangeUi;
+    private QuickSell quickSell;
+    private ExchangeBoard exchangeBoard;
+    private int minutes;
     private MerchantNpc merchant;
     private ShopListener shopListener;
     private RandomTeleport rtp;
@@ -96,6 +105,7 @@ public final class SmpPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        newPriceList();
         // fehlende Schlüssel (ältere config.yml) kommen aus der mitgelieferten Datei
         getConfig().options().copyDefaults(true);
         LongSupplier clock = System::currentTimeMillis;
@@ -121,7 +131,7 @@ public final class SmpPlugin extends JavaPlugin {
         s.orders = new Orders(s.db, s.bank, s.mailbox, s.notices, s.prices, s.stats, clock, s.settings.orderFeeBp,
                 s.settings.orderDurationMs, s.settings.orderMaxActive);
         s.buyback = new Buyback(s.db, s.bank);
-        s.shop = new ServerShop(s.db, s.bank, s.buyback);
+        s.shop = new ServerShop(s.db, s.bank, s.buyback, new Courses(s.db, clock));
         configureShop();
         s.stalls = new Stalls(s.db, s.bank, clock, s.settings.stallRent);
         s.stalls.configure(s.settings.stallRent, Stalls.WEEK_MS, s.settings.stallWarnMs, s.settings.stallMaxWeeks);
@@ -149,6 +159,9 @@ public final class SmpPlugin extends JavaPlugin {
         buybackUi = new BuybackUi(s);
         stallUi = new StallUi(s);
         shopUi = new ShopUi(s);
+        exchangeUi = new ExchangeUi(s);
+        quickSell = new QuickSell(s);
+        exchangeBoard = new ExchangeBoard(s.town, s.shop);
         merchant = new MerchantNpc(s, shopUi);
         shopListener = new ShopListener(s);
         rtp = new RandomTeleport(s);
@@ -223,13 +236,19 @@ public final class SmpPlugin extends JavaPlugin {
         r.add(this, "ah", (sender, args) -> auctionUi.command((Player) sender, args));
         r.add(this, "abholen", (sender, args) -> mailboxUi.open((Player) sender, 0));
         r.add(this, "auftraege", (sender, args) -> orderUi.command((Player) sender, args));
-        r.add(this, "verkaufen", (sender, args) -> {
-            if (!s.settings.shopEnabled) {
-                s.msg.send(sender, "merchant.off");
-                return;
+        r.add(this, "verkaufen", new Router.Handler() {
+            @Override
+            public void run(org.bukkit.command.CommandSender sender, String[] args) {
+                quickSell.command((Player) sender, args);
             }
-            buybackUi.open((Player) sender);
+
+            @Override
+            public java.util.List<String> tab(org.bukkit.command.CommandSender sender, String[] args) {
+                return args.length == 1 ? QuickSell.tab() : java.util.List.of();
+            }
         });
+        r.add(this, "wert", (sender, args) -> quickSell.worth((Player) sender, args));
+        r.add(this, "boerse", (sender, args) -> exchangeUi.command((Player) sender, args));
         r.add(this, "shop", new Router.Handler() {
             @Override
             public void run(org.bukkit.command.CommandSender sender, String[] args) {
@@ -335,6 +354,7 @@ public final class SmpPlugin extends JavaPlugin {
         }, () -> {
             s.boards.stallSigns();
             s.boards.refresh();
+            exchangeBoard.refresh();
             gateDecor.refresh();
             reportState();
         });
@@ -364,9 +384,26 @@ public final class SmpPlugin extends JavaPlugin {
         s.boards.stallSigns();
     }
 
+    /**
+     * Neue Preisliste für bestehende Server: eine unveränderte Warenliste einer älteren Fassung aus der config.yml
+     * nehmen (dann gilt die mitgelieferte mit den neuen Preisen); eine eigene bleibt.
+     */
+    private void newPriceList() {
+        PriceList.Result r = PriceList.migrate(getConfig());
+        if (r == PriceList.Result.NONE) {
+            return;
+        }
+        saveConfig();
+        getLogger().info(r == PriceList.Result.UPDATED
+                ? "Händlerhaus: neue Preisliste " + PriceList.CURRENT + " (die alte, unveränderte Liste ist aus der config.yml raus)."
+                : "Händlerhaus: eigene Warenliste in der config.yml bleibt – die neuen Erzpreise stehen in der mitgelieferten config.yml.");
+    }
+
     /** Sortiment aus der config.yml (nur Sorten, die es als Gegenstand gibt) an Händlerhaus und Ankauf geben. */
     private void configureShop() {
-        Catalog c = Catalog.of(s.settings.shopCategories, s.settings.shopWares, s.settings.shopMaxSellPercent, key -> {
+        s.shop.courses().configure(s.settings.courseRules);
+        Catalog c = Catalog.of(s.settings.shopCategories, s.settings.shopWares, s.settings.shopMaxSellPercent,
+                s.settings.shopFactors, key -> {
             Material m = Material.matchMaterial(key);
             return m != null && m.isItem() && !m.isAir();
         }, w -> getLogger().warning("Händlerhaus: " + w));
@@ -389,10 +426,14 @@ public final class SmpPlugin extends JavaPlugin {
             s.noticeSender.flush(owner);
         }
         stallUi.tick();
+        if (++minutes % 360 == 0) {
+            s.shop.courses().prune(); // alter Kursverlauf (älter als 30 Tage) weg
+        }
     }
 
     private void every30s() {
         s.boards.refresh();
+        exchangeBoard.refresh();
         try {
             s.reporter.flush();
         } catch (RuntimeException e) {
@@ -429,6 +470,14 @@ public final class SmpPlugin extends JavaPlugin {
 
     public ShopUi shopUi() {
         return shopUi;
+    }
+
+    public ExchangeUi exchangeUi() {
+        return exchangeUi;
+    }
+
+    public ExchangeBoard exchangeBoard() {
+        return exchangeBoard;
     }
 
     public StallUi stallUi() {

@@ -74,12 +74,13 @@ enforce-whitelist=false
 motd=MorniSMP Test
 difficulty=peaceful
 EOF
-# Testwerte: Belohnung sofort, kurze Abklingzeit des Zufalls-Teleports (5 s).
+# Testwerte: Belohnung sofort, kurze Abklingzeit des Zufalls-Teleports (20 s – lang genug, dass der Test sie
+# auch auf einem vollen Rechner noch sieht).
 cat > "$SERVER/plugins/MorniSMP/config.yml" <<'EOF'
 belohnung:
   mindest-minuten: 0
 zufallsteleport:
-  abklingzeit-sekunden: 5
+  abklingzeit-sekunden: 20
 EOF
 rm -f "$SERVER/plugins/"Morni-SMP*.jar "$SERVER/plugins/MoinMorni-FakeNetwork.jar"
 # Test-Netzwerk (NO_NETWORK=1: MorniSMP läuft allein): Cleo spricht Englisch, Meldungen landen in calls.log.
