@@ -109,10 +109,15 @@ dort gewesen“.
 - `shop/PriceList`: bestehende Server mit unveränderter 0.2.0-Warenliste bekommen die neue Liste (Fingerabdruck);
   eigene Listen bleiben.
 - Geprüft: 89 Unit-Tests (JUnit 6.1.3), `-Ppaper-26.1 compile` (auch nach dem Merge von 0.2.1). Echter Test
-  (`test/run.sh`, Paper 26.1.2, erweitert um Erzpreise, Börse, `/wert`, `/verkaufen`, Kurstafel, `LANGSAM`) vor dem
-  Merge **174/175** – rot nur die Kurstafel-Prüfung (Text abgeschnitten gelesen; Prüfung seitdem mit Wiederholung).
-  Nach dem Merge brach der Lauf bei 52/61 ab: der Speicherwächter der Sandbox beendete den Test-Server (Rechner voll
-  mit anderen Helfern). **Offen:** voller grüner Lauf nach dem Merge, Bilder mit echtem Client 26.3.
+  (`LANGSAM=2 FRESH=1 test/run.sh`, Paper 26.1.2 + Test-Netzwerk, vier Test-Spieler, erweitert um Erzpreise, Börse,
+  `/wert`, `/verkaufen hand|alles`, Kurstafel) nach dem Merge **181/181**, Server-Log ohne Fehler. Dabei im Test
+  behoben (nur Test, kein Spielfehler): Die Kurstafel wird Teil für Teil gelesen („data get“ kürzt lange Listen mit
+  „...“), die Abklingzeit des Zufalls-Teleports ist im Test 20 s statt 5 s und wird gleich nach der Ankunft geprüft
+  (auf dem vollen Rechner kam die Antwort erst nach Ablauf an), Bert schlägt in der Wildnis erst, wenn er Anna sieht.
+- Bilder mit echtem Client 26.3 (nur lokal, Kursverlauf für die Bilder nachgestellt): Kurstafel nah und von der
+  Straße, Händlerhaus „Erze & Edelsteine“ mit Diamant-Preis und Kurs, `/boerse` mit Tooltip, Diamant-Verlauf 24 Std.
+  und 7 Tage, `/wert` im Chat. Gesehen: Die Balken ▁…█ im Chat sind in der Minecraft-Schrift oben fast gleich hoch –
+  die Farbe zeigt die Richtung, die Höhe nur grob; den genauen Verlauf zeigt die Börse.
 
 ## Offen / nicht echt geprüft
 

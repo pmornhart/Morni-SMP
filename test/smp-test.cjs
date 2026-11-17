@@ -23,6 +23,8 @@ const results = [];
 /** Ausgelasteter Rechner: alle Wartezeiten mal LANGSAM (z. B. LANGSAM=3). */
 const SLOW = Math.max(1, Number(process.env.LANGSAM) || 1);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** Abklingzeit des Zufalls-Teleports im Test (run.sh: 20 s) und etwas Luft. */
+const RTP_WAIT = 21000;
 function check(name, ok, detail = '') {
   results.push({ name, ok: Boolean(ok) });
   console.log(`${ok ? '✓' : '✗'} ${name}${detail ? ` – ${detail}` : ''}`);
@@ -366,7 +368,7 @@ async function main() {
     anna.chat('/spawn');
     await waitFor(async () => await inDim('Anna', 'minecraft:smp_spawn'), 15000, 500);
     check(`/spawn bringt aus ${target} zurück in die Spawn-Welt`, await inDim('Anna', 'minecraft:smp_spawn'), pre.toString());
-    await sleep(6000); // Abklingzeit im Test: 5 s
+    await sleep(RTP_WAIT); // Abklingzeit im Test: 20 s
   }
   for (const target of ['nether', 'end']) {
     clear(anna);
@@ -379,7 +381,7 @@ async function main() {
     check(`/rtp ${target}: sicherer Boden`, sg.ok, sg.detail);
     anna.chat('/spawn');
     await waitFor(async () => await inDim('Anna', 'minecraft:smp_spawn'), 15000, 500);
-    await sleep(6000);
+    await sleep(RTP_WAIT);
   }
   check('Wieder in der Spawn-Welt', await inDim('Anna', 'minecraft:smp_spawn'));
   await cmd('execute in minecraft:smp_spawn run tp Anna ' + `${pos.x} ${pos.y} ${pos.z}`);
@@ -584,12 +586,23 @@ async function main() {
   check('/rtp nah: Suche + 3 s Wartezeit + Teleport', moved && sees(anna, /sicheren Platz/), p1.toString());
   check('Ziel liegt im Ring 500–2000 in der Oberwelt', dist >= 480 && dist <= 2020 &&
     await inDim('Anna', 'minecraft:overworld'), `Abstand ${dist.toFixed(0)}`);
+  // Gleich nach der Ankunft: Abklingzeit (im Test 20 s – ein voller Rechner verzögert die Antworten)
+  check('Abklingzeit danach', (await say(anna, '/rtp nah', /warten|wieder möglich/, 15000)) !== '');
   await waitFor(() => anna.blockAt(p1.offset(0, -0.5, 0)) != null, 10000);
   const ground = anna.blockAt(p1.offset(0, -0.5, 0));
   const feet = anna.blockAt(p1);
   check('Sicherer Platz: fester Boden, Füße frei, kein Wasser', ground && ground.boundingBox === 'block' &&
     !/water|lava/.test(ground.name) && feet && feet.boundingBox === 'empty', `${ground?.name} / ${feet?.name}`);
-  check('Abklingzeit danach', (await say(anna, '/rtp nah', /warten|wieder möglich/)) !== '');
+  // Nach dem weiten Sprung lädt der Test-Spieler viele Chunks – auf einem vollen Rechner hängt er damit hinterher;
+  // darum erst fertig laden lassen, bevor es mit Grundstück und Laden weitergeht
+  for (let i = 0; i < 6 * SLOW; i++) {
+    try {
+      await anna.waitForChunksToLoad(); // gibt nach 10 s auf – dann noch einmal
+      break;
+    } catch {
+      // weiter warten
+    }
+  }
 
   // ------------------------------------------------------------------ Grundstück
   const claimed = await say(anna, '/gs sichern', /Gesichert|gehört|nah an der Marktstadt/);
@@ -662,6 +675,7 @@ async function main() {
     await cmd(`setblock ${spot.x} ${spot.y} ${spot.z} chest`, `setblock ${spot.x} ${spot.y + 1} ${spot.z} oak_sign`,
       'clear Anna', 'give Anna cobblestone 32');
     await sleep(1000);
+    await waitFor(() => /sign/.test(anna.blockAt(spot.offset(0, 1, 0))?.name ?? ''), 15000);
     await hold(anna, 'cobblestone');
     const signBlock = anna.blockAt(spot.offset(0, 1, 0));
     await anna.lookAt(signBlock.position.offset(0.5, 0.5, 0.5), true);
@@ -725,6 +739,12 @@ async function main() {
   // ------------------------------------------------------------------ Kampf in der Wildnis + Schutz in der Stadt
   await cmd('tp Bert Anna');
   await sleep(2000);
+  // Bert muss Anna sehen und nah genug sein (auf einem vollen Rechner kommen die Pakete spät)
+  const annaNear = () => {
+    const e = bert.players.Anna?.entity;
+    return e && bert.entity.position.distanceTo(e.position) < 3.5 ? e : null;
+  };
+  await waitFor(() => annaNear() != null, 10000, 250);
   // Annas Grundstück ist friedlich: kein Schaden
   const hp0 = anna.health;
   const annaEntity = bert.players.Anna?.entity;
@@ -739,12 +759,14 @@ async function main() {
   check('/gs aufgeben', (await say(anna, '/gs aufgeben', /freigegeben/)) !== '');
   clear(anna, bert);
   const hp1 = anna.health;
-  const target2 = bert.players.Anna?.entity;
-  if (target2) {
-    await bert.lookAt(target2.position.offset(0, 1.4, 0), true);
-    bert.attack(target2);
+  for (let i = 0; i < 4 && anna.health >= hp1; i++) {
+    const target2 = annaNear();
+    if (target2) {
+      await bert.lookAt(target2.position.offset(0, 1.4, 0), true);
+      bert.attack(target2);
+    }
+    await waitFor(() => anna.health < hp1, 1500);
   }
-  await waitFor(() => anna.health < hp1, 3000);
   check('In der Wildnis wirkt ein Treffer', anna.health < hp1, `${hp1} → ${anna.health}`);
   check('Kampf-Markierung für beide', await waitFor(() => sees(anna, /im Kampf/) && sees(bert, /im Kampf/), 3000));
   if (NETWORK) {
@@ -940,7 +962,7 @@ async function main() {
   await hold(dora, 'diamond');
   clear(dora);
   dora.chat('/wert');
-  await waitFor(() => sees(dora, /Bester Kaufauftrag/), 6000);
+  await waitFor(() => sees(dora, /Bester Kaufauftrag/) && sees(dora, /\[Jetzt verkaufen\]/), 6000);
   check('/wert: Vroni verkauft 3.200 ₮ und zahlt 800 ₮ – für 16 Stück 12.800 ₮', sees(dora, /Vroni verkauft: 3\.200 ₮/)
     && sees(dora, /Vroni zahlt: 800 ₮ pro Stück – für deine 16: 12\.800 ₮/), dora.chats.join(' / ').slice(0, 400));
   check('/wert: bester Kaufauftrag 1.000 ₮ (noch 10 gesucht)', sees(dora, /Kaufauftrag: 1\.000 ₮ pro Stück \(noch 10 gesucht\)/),
