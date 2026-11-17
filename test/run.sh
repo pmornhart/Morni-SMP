@@ -31,6 +31,7 @@ JAVA="$JAVA_HOME/bin/java"
 PAPER_JAR="${PAPER_JAR:-$CACHE/jars/paper-26.1.2.jar}"
 TEMPLATE="${TEMPLATE:-$CACHE/servers/t1}"
 SERVER="${SERVER_DIR:-$CACHE/servers/smp-test}"
+MEMORY="${MEMORY:-2G}"
 PORT="${PORT:-25740}"
 RCON_PORT="${RCON_PORT:-25840}"
 EXTRA_PLUGINS="${EXTRA_PLUGINS-$CACHE/jars/ViaVersion-5.12.2.jar $CACHE/jars/ViaBackwards-5.12.2.jar}"
@@ -96,7 +97,7 @@ done
 echo "== Server starten (Port $PORT, RCON $RCON_PORT)"
 cd "$SERVER"
 : > console.log
-nice -n 15 "$JAVA" -Xms512M -Xmx2G -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -jar paper.jar --nogui < /dev/null > console.log 2>&1 &
+nice -n 15 "$JAVA" -Xms256M -Xmx"$MEMORY" -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -jar paper.jar --nogui < /dev/null > console.log 2>&1 &
 PID=$!
 echo "$PID" > "$SERVER/.pid"
 stop_server() {

@@ -74,6 +74,23 @@ dort gewesen“.
   verkaufen, Inventar verkaufen, Kontostand, `/smpadmin shop`, Englisch). Bilder mit Client 26.3 nur lokal unter
   `~/mm-cache/bilder-smp-shop/`.
 
+## Zurück ins Spiel (16./17.11.2026, Version 0.2.1, Branch `claude/zurueck-ins-spiel`, wartet auf Philips Go)
+
+- Philip: „mitten im Spiel nochmal fragen, ob man wirklich zur Lobby will“. Netzwerk-Schnittstelle 2 (byte-gleiche
+  Kopie): MorniSMP meldet `playing`, solange jemand im Kampf markiert ist (`CombatTag`: frisch markiert → true; Ablauf,
+  Tod, Rauswurf → false); kein `holdSlot` (wer wiederkommt, landet ohnehin dort, wo er war); älteres Netzwerk-Plugin
+  (`LinkageError`) → einmal Hinweis im Log. `/smpadmin geld [geben|nehmen|setzen] [spieler] <betrag>`: ohne Art wird
+  gegeben, ohne Spieler gilt es einem selbst (`/smpadmin geld 5000` für Owner/Admins zum Testen), wer etwas bekommt,
+  erfährt es freundlich (de/en). Test-Netzwerk schreibt `playing`, `ask-lobby`, `hold-slot`; `test/run.sh` mit
+  `MEMORY` (Xms 256M); `smp-test.cjs` prüft die neuen Geld-Befehle und `playing` im Kampf. JUnit 6.1.3.
+- Geprüft: 62 Unit-Tests, Paper 26.1 übersetzt. Der volle echte Test (`FRESH=1 test/run.sh`) wurde auf dem stark
+  ausgelasteten Rechner dreimal vom Speicherwächter beendet (beim Erzeugen der Welten hinter den Reisetoren; bis dahin
+  bis zu 39/39 grün). Darum ein Kurztest nur der Änderungen (Paper 26.1.2 + Test-Netzwerk, zwei Test-Spieler, Skript
+  nur lokal): **13/13** – `geld geben` mit Nachricht an Anna, `geld Bert 100` ohne „geben“, Hinweis ohne Betrag bzw.
+  von der Konsole ohne Spieler, im Spiel `geld 500` / `geld nehmen 600` für sich selbst und `geld setzen Bert 0`;
+  Kampf in der Oberwelt → beide `playing true`, nach 15 s beide false, Tod → false, kein holdSlot; Log ohne
+  Plugin-Fehler.
+
 ## Kostbare Erze und Börse (16.11.2026, Version 0.3.0, Branch `claude/erz-preise`, wartet auf Philips Go)
 
 - Philip: „Preise für Erze geisteskrank anheben“ und „Marktsystem genau wie bei OP SMP“ (Video nicht ansehbar –
@@ -94,6 +111,9 @@ dort gewesen“.
 - Geprüft: 89 Unit-Tests (JUnit 6.1.3), `-Ppaper-26.1 compile`, echter Test siehe unten.
 
 ## Offen / nicht echt geprüft
+
+- Zurück ins Spiel: voller echter Test mit der neuen Fassung (nur Kurztest, siehe oben); Netzwerk-Repo: nichts im
+  Einstellungs-Katalog nötig (MorniSMP hat kein `rueckkehr-sekunden`).
 
 - Händlerhaus: Bedrock-Spieler (Truhen-Menüs, Chat-Eingabe), Preise mit echten Spielern ausbalancieren, Anbindung
   von `haendler.*` an den Einstellungs-Katalog des Panels (Netzwerk-Repo).

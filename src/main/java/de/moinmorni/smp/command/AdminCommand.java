@@ -22,7 +22,10 @@ import org.bukkit.entity.Player;
  */
 public final class AdminCommand implements Router.Handler {
 
-    private static final List<String> SUBS = List.of("geld", "bau", "stadt", "neuladen", "stand", "gs", "info", "shop", "boerse");
+    private static final List<String> SUBS = List.of("geld", "bau", "stadt", "neuladen", "stand", "gs", "info", "shop",
+            "boerse");
+    private static final java.util.Set<String> MONEY_ACTIONS = java.util.Set.of("geben", "give", "nehmen", "take",
+            "setzen", "set");
 
     private final Smp s;
     private final SmpPlugin plugin;
@@ -89,44 +92,76 @@ public final class AdminCommand implements Router.Handler {
         }
         if (args.length == 2) {
             return switch (sub) {
-                case "geld" -> List.of("geben", "nehmen", "setzen");
+                case "geld" -> {
+                    java.util.List<String> all = new java.util.ArrayList<>(List.of("geben", "nehmen", "setzen"));
+                    all.addAll(Router.online());
+                    yield all;
+                }
                 case "stadt" -> List.of("neu", "info", "tore");
                 case "stand" -> List.of("frei");
                 case "gs" -> List.of("weg");
                 default -> List.of();
             };
         }
-        if (args.length == 3 && sub.equals("geld")) {
+        if (args.length == 3 && sub.equals("geld") && MONEY_ACTIONS.contains(args[1].toLowerCase(Locale.ROOT))) {
             return Router.online();
         }
         return List.of();
     }
 
+    /**
+     * {@code /smpadmin geld [geben|nehmen|setzen] [spieler] <betrag>}: ohne Art wird gegeben, ohne Spieler gilt es
+     * einem selbst – so geben sich Owner und Admins zum Testen schnell Geld ({@code /smpadmin geld 5000}).
+     */
     private void money(CommandSender sender, String[] args) {
-        if (args.length < 4) {
+        int i = 1;
+        String action = "geben";
+        if (args.length > i && MONEY_ACTIONS.contains(args[i].toLowerCase(Locale.ROOT))) {
+            action = args[i].toLowerCase(Locale.ROOT);
+            i++;
+        }
+        int left = args.length - i;
+        if (left < 1 || left > 2 || (left == 1 && !(sender instanceof Player))) {
             s.msg.send(sender, "admin.money.usage");
             return;
         }
-        MoneyCommands.Who w = money.find(args[2]);
-        if (w == null) {
-            s.msg.send(sender, "player.unknown", Msg.t("name", args[2]));
-            return;
+        MoneyCommands.Who w;
+        if (left == 1) {
+            Player self = (Player) sender;
+            w = new MoneyCommands.Who(self.getUniqueId(), self.getName(), self);
+        } else {
+            w = money.find(args[i]);
+            if (w == null) {
+                s.msg.send(sender, "player.unknown", Msg.t("name", args[i]));
+                return;
+            }
         }
-        long amount = args[1].equalsIgnoreCase("setzen") && args[3].equals("0") ? 0 : Money.parse(args[3]);
+        String text = args[args.length - 1];
+        boolean set = action.equals("setzen") || action.equals("set");
+        long amount = set && text.equals("0") ? 0 : Money.parse(text);
         if (amount < 0) {
             s.msg.send(sender, "money.invalid");
             return;
         }
         s.bank.ensure(w.uuid(), w.name());
-        Bank.Result r = switch (args[1].toLowerCase(Locale.ROOT)) {
+        Bank.Result r = switch (action) {
             case "geben", "give" -> s.bank.deposit(w.uuid(), amount, "admin", sender.getName());
             case "nehmen", "take" -> s.bank.withdraw(w.uuid(), amount, "admin", sender.getName());
-            case "setzen", "set" -> s.bank.set(w.uuid(), amount, "admin");
-            default -> Bank.Result.INVALID;
+            default -> s.bank.set(w.uuid(), amount, "admin");
         };
         if (r == Bank.Result.OK) {
-            s.msg.send(sender, "admin.money.done", Msg.t("name", w.name()),
-                    s.msg.money("balance", s.bank.balance(w.uuid()), sender));
+            long balance = s.bank.balance(w.uuid());
+            boolean self = sender instanceof Player p && p.getUniqueId().equals(w.uuid());
+            if (self) {
+                s.msg.send(sender, "admin.money.self", s.msg.money("balance", balance, sender));
+            } else {
+                s.msg.send(sender, "admin.money.done", Msg.t("name", w.name()), s.msg.money("balance", balance, sender));
+                Player target = org.bukkit.Bukkit.getPlayer(w.uuid());
+                if (target != null && (action.equals("geben") || action.equals("give"))) {
+                    s.msg.send(target, "admin.money.got", s.msg.money("amount", amount, target),
+                            s.msg.money("balance", balance, target));
+                }
+            }
         } else if (r == Bank.Result.NOT_ENOUGH) {
             s.msg.send(sender, "admin.money.not-enough", Msg.t("name", w.name()));
         } else {

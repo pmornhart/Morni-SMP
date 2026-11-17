@@ -39,6 +39,11 @@ final class Standalone implements Network {
     }
 
     @Override
+    public void playing(Player player, boolean playing) {
+        // ohne Netzwerk fragt niemand nach
+    }
+
+    @Override
     public boolean hubOnline() {
         return false;
     }
